@@ -35,15 +35,63 @@ jobs:
           path: theos/sdks
           key: ios12-rootful-sdk-16.5
 
+      
       - name: Download SDK
         run: |
-          if [ ! -d theos/sdks/iPhoneOS16.5.sdk ]; then
-            curl -fL https://github.com/theos/sdks/archive/master.zip -o sdks.zip
-            unzip -q sdks.zip
-            mkdir -p theos/sdks
-            mv sdks-master/*.sdk theos/sdks/
-            rm -rf sdks.zip sdks-master
+          set -euo pipefail
+
+          SDK_DIR="theos/sdks"
+          mkdir -p "$SDK_DIR"
+
+          if [ ! -d "$SDK_DIR/iPhoneOS16.5.sdk" ]; then
+            curl -fL --retry 3 \
+              https://github.com/theos/sdks/archive/master.zip \
+              -o sdks.zip
+
+            python3 - <<'PY'
+          import zipfile
+          import os
+          import stat
+
+          archive = zipfile.ZipFile("sdks.zip")
+          destination = "theos/sdks"
+
+          for item in archive.infolist():
+              name = item.filename
+
+              if not name.startswith("sdks-master/"):
+                  continue
+
+              relative = name[len("sdks-master/"):]
+              if not relative:
+                  continue
+
+              mode = item.external_attr >> 16
+
+              # Skip symbolic links and special files
+              if stat.S_ISLNK(mode):
+                  continue
+
+              if not (item.is_dir() or stat.S_ISREG(mode)):
+                  continue
+
+              target = os.path.join(destination, relative)
+
+              if item.is_dir():
+                  os.makedirs(target, exist_ok=True)
+              else:
+                  os.makedirs(os.path.dirname(target), exist_ok=True)
+                  with archive.open(item) as source:
+                      with open(target, "wb") as output:
+                          output.write(source.read())
+
+          archive.close()
+          PY
+
+            rm -f sdks.zip
           fi
+
+          test -d "$SDK_DIR/iPhoneOS16.5.sdk"
 
       - name: Setup environment
         run: |
