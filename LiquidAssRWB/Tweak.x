@@ -200,6 +200,8 @@ static void RWBApplyDarkStyleIfAvailable(UIWindow *window) {
 
 %end
 
+%end
+
 %group RWB_iOS13
 
 %hook UIWindow
@@ -224,8 +226,6 @@ static void RWBApplyDarkStyleIfAvailable(UIWindow *window) {
     RWBApplyDarkStyleIfAvailable(window);
     return window;
 }
-
-%end
 
 %end
 
