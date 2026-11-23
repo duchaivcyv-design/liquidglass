@@ -1,4 +1,3 @@
-
 name: build-rootful-ios12-plus
 
 on:
@@ -47,7 +46,6 @@ jobs:
 
           mkdir -p "$SDK_DIR"
 
-          # Remove incomplete SDK
           if [ ! -f "$FOUNDATION" ]; then
             rm -rf "$SDK_PATH"
 
@@ -58,26 +56,84 @@ jobs:
               https://github.com/theos/sdks/archive/refs/heads/master.zip \
               -o "$TMP_DIR/sdks.zip"
 
-            # Extract while preserving SDK symbolic links
-            unzip -q "$TMP_DIR/sdks.zip" -d "$TMP_DIR"
+            python3 - "$TMP_DIR/sdks.zip" "$TMP_DIR/extracted" <<'PY'
+          import os
+          import sys
+          import stat
+          import zipfile
 
-            SOURCE="$TMP_DIR/sdks-master/iPhoneOS16.5.sdk"
+          archive_path, destination = sys.argv[1:3]
+          os.makedirs(destination, exist_ok=True)
 
-            if [ ! -f "$SOURCE/System/Library/Frameworks/Foundation.framework/Headers/Foundation.h" ]; then
-              echo "::error::Downloaded SDK is missing Foundation.h"
-              exit 1
-            fi
+          with zipfile.ZipFile(archive_path) as archive:
+              members = archive.infolist()
 
-            cp -a "$SOURCE" "$SDK_PATH"
+              # Extract regular files and directories first.
+              for item in members:
+                  name = item.filename
+
+                  if not name.startswith("sdks-master/iPhoneOS16.5.sdk/"):
+                      continue
+
+                  relative = name[len("sdks-master/"):]
+                  target = os.path.join(destination, relative)
+
+                  mode = item.external_attr >> 16
+
+                  if stat.S_ISLNK(mode):
+                      continue
+
+                  if item.is_dir():
+                      os.makedirs(target, exist_ok=True)
+                  elif stat.S_ISREG(mode) or mode == 0:
+                      os.makedirs(os.path.dirname(target), exist_ok=True)
+                      with archive.open(item) as src, open(target, "wb") as dst:
+                          dst.write(src.read())
+
+              # Resolve symlink entries as regular copies.
+              pending = [
+                  item for item in members
+                  if item.filename.startswith("sdks-master/iPhoneOS16.5.sdk/")
+                  and stat.S_ISLNK(item.external_attr >> 16)
+              ]
+
+              for item in pending:
+                  relative = item.filename[len("sdks-master/"):]
+                  target = os.path.join(destination, relative)
+
+                  link = archive.read(item).decode("utf-8")
+                  source_dir = os.path.dirname(target)
+                  resolved = os.path.normpath(os.path.join(source_dir, link))
+
+                  if os.path.commonpath([destination, resolved]) != destination:
+                      raise RuntimeError("SDK symlink escapes extraction directory")
+
+                  if os.path.isfile(resolved):
+                      os.makedirs(source_dir, exist_ok=True)
+                      import shutil
+                      shutil.copy2(resolved, target)
+
+                  elif os.path.isdir(resolved):
+                      os.makedirs(source_dir, exist_ok=True)
+                      import shutil
+                      shutil.copytree(resolved, target, dirs_exist_ok=True)
+
+                  else:
+                      raise RuntimeError(
+                          f"Unresolved SDK symlink: {relative} -> {link}"
+                      )
+
+          print("SDK extraction completed.")
+          PY
+
+            cp -a "$TMP_DIR/extracted/iPhoneOS16.5.sdk" "$SDK_PATH"
           fi
 
-          # Validate essential SDK headers
           test -f "$FOUNDATION"
 
-          echo "Foundation SDK header:"
-          ls -l "$FOUNDATION"
-
+          echo "Foundation.h verified."
           echo "SDK validation successful."
+
 
       - name: Setup environment
         run: |
