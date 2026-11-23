@@ -1,3 +1,4 @@
+
 name: build-rootful-ios12-plus
 
 on:
@@ -33,65 +34,50 @@ jobs:
         uses: actions/cache@v4
         with:
           path: theos/sdks
-          key: ios12-rootful-sdk-16.5
+          key: ios12-rootful-sdk-16.5-fixed-v2
 
-      
-      - name: Download SDK
+      - name: Download and Validate SDK
+        shell: bash
         run: |
           set -euo pipefail
 
-          SDK_DIR="theos/sdks"
+          SDK_DIR="$GITHUB_WORKSPACE/theos/sdks"
+          SDK_PATH="$SDK_DIR/iPhoneOS16.5.sdk"
+          FOUNDATION="$SDK_PATH/System/Library/Frameworks/Foundation.framework/Headers/Foundation.h"
+
           mkdir -p "$SDK_DIR"
 
-          if [ ! -d "$SDK_DIR/iPhoneOS16.5.sdk" ]; then
+          # Remove incomplete SDK
+          if [ ! -f "$FOUNDATION" ]; then
+            rm -rf "$SDK_PATH"
+
+            TMP_DIR="$(mktemp -d)"
+            trap 'rm -rf "$TMP_DIR"' EXIT
+
             curl -fL --retry 3 \
-              https://github.com/theos/sdks/archive/master.zip \
-              -o sdks.zip
+              https://github.com/theos/sdks/archive/refs/heads/master.zip \
+              -o "$TMP_DIR/sdks.zip"
 
-            python3 - <<'PY'
-          import zipfile
-          import os
-          import stat
+            # Extract while preserving SDK symbolic links
+            unzip -q "$TMP_DIR/sdks.zip" -d "$TMP_DIR"
 
-          archive = zipfile.ZipFile("sdks.zip")
-          destination = "theos/sdks"
+            SOURCE="$TMP_DIR/sdks-master/iPhoneOS16.5.sdk"
 
-          for item in archive.infolist():
-              name = item.filename
+            if [ ! -f "$SOURCE/System/Library/Frameworks/Foundation.framework/Headers/Foundation.h" ]; then
+              echo "::error::Downloaded SDK is missing Foundation.h"
+              exit 1
+            fi
 
-              if not name.startswith("sdks-master/"):
-                  continue
-
-              relative = name[len("sdks-master/"):]
-              if not relative:
-                  continue
-
-              mode = item.external_attr >> 16
-
-              # Skip symbolic links and special files
-              if stat.S_ISLNK(mode):
-                  continue
-
-              if not (item.is_dir() or stat.S_ISREG(mode)):
-                  continue
-
-              target = os.path.join(destination, relative)
-
-              if item.is_dir():
-                  os.makedirs(target, exist_ok=True)
-              else:
-                  os.makedirs(os.path.dirname(target), exist_ok=True)
-                  with archive.open(item) as source:
-                      with open(target, "wb") as output:
-                          output.write(source.read())
-
-          archive.close()
-          PY
-
-            rm -f sdks.zip
+            cp -a "$SOURCE" "$SDK_PATH"
           fi
 
-          test -d "$SDK_DIR/iPhoneOS16.5.sdk"
+          # Validate essential SDK headers
+          test -f "$FOUNDATION"
+
+          echo "Foundation SDK header:"
+          ls -l "$FOUNDATION"
+
+          echo "SDK validation successful."
 
       - name: Setup environment
         run: |
@@ -101,6 +87,16 @@ jobs:
         run: |
           brew install ldid make
           echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
+
+      - name: Verify Build Environment
+        run: |
+          set -euo pipefail
+
+          test -f "$THEOS/sdks/iPhoneOS16.5.sdk/System/Library/Frameworks/Foundation.framework/Headers/Foundation.h"
+
+          echo "Theos: $THEOS"
+          echo "SDK: iPhoneOS16.5.sdk"
+          echo "Architecture: arm64"
 
       - name: Build Rootful iOS 12+
         run: |
@@ -115,6 +111,7 @@ jobs:
             THEOS_PACKAGE_SCHEME=
 
           mkdir -p artifacts
+
           find packages -maxdepth 1 -type f -name '*.deb' -exec cp {} artifacts/ \;
 
           test "$(find artifacts -maxdepth 1 -name '*.deb' | wc -l | tr -d ' ')" -eq 1
