@@ -3,7 +3,21 @@
 #import "../Shared/LGSharedSupport.h"
 #import "../Shared/LGLiquidMotion.h"
 #import <objc/runtime.h>
+#import <objc/message.h>
 #import <QuartzCore/QuartzCore.h>
+
+static void LGSliderSetContinuousCornerCurve(CALayer *layer) {
+    if (!layer) return;
+    if (@available(iOS 13.0, *)) {
+        layer.cornerCurve = kCACornerCurveContinuous;
+    } else {
+        SEL selector = NSSelectorFromString(@"setCornerCurve:");
+        if ([layer respondsToSelector:selector]) {
+            ((void (*)(id, SEL, id))objc_msgSend)(layer, selector,
+                                                  (id)kCACornerCurveContinuous);
+        }
+    }
+}
 
 void * const kLGPrefsSliderSegmentedKey = (void *)&kLGPrefsSliderSegmentedKey;
 void * const kLGPrefsSliderSegmentCountKey = (void *)&kLGPrefsSliderSegmentCountKey;
@@ -704,7 +718,7 @@ static UIColor *LGSliderInactiveTrackColor(UITraitCollection *traitCollection) {
     self.trackBackgroundView.hidden = NO;
     self.trackBackgroundView.frame = track;
     self.trackBackgroundView.layer.cornerRadius = CGRectGetHeight(track) * 0.5;
-    self.trackBackgroundView.layer.cornerCurve = kCACornerCurveContinuous;
+    LGSliderSetContinuousCornerCurve(self.trackBackgroundView.layer);
 
     CGFloat range = self.maximumValue - self.minimumValue;
     CGFloat normalized = range > FLT_EPSILON ? (self.value - self.minimumValue) / range : 0.0;
@@ -757,7 +771,7 @@ static UIColor *LGSliderInactiveTrackColor(UITraitCollection *traitCollection) {
         self.magneticFillView.frame = CGRectMake(startX, CGRectGetMinY(track), width, CGRectGetHeight(track));
     }
     self.magneticFillView.layer.cornerRadius = CGRectGetHeight(track) * 0.5;
-    self.magneticFillView.layer.cornerCurve = kCACornerCurveContinuous;
+    LGSliderSetContinuousCornerCurve(self.magneticFillView.layer);
 }
 
 @end
