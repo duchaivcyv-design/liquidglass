@@ -1,4 +1,3 @@
-
 #pragma once
 
 #import <Foundation/Foundation.h>
@@ -79,5 +78,14 @@ FOUNDATION_EXPORT BOOL LGCompatIsIOS12OrEarlier(void);
 FOUNDATION_EXPORT BOOL LGCompatUsesLegacyMenus(void);
 FOUNDATION_EXPORT BOOL LGCompatIsDarkAppearance(UITraitCollection * _Nullable traits);
 FOUNDATION_EXPORT void LGCompatInstallRuntimeShims(void);
+
+/*
+ * CALayer.cornerCurve was introduced in iOS 13. Direct property access
+ * trips -Wunguarded-availability-new against an iOS 12 deployment target.
+ * Route through these helpers instead: they call native selectors on 13+
+ * and hit the runtime shims installed by LGCompatInstallRuntimeShims on 12.
+ */
+FOUNDATION_EXPORT void LGCompatApplyCornerCurve(CALayer *layer, NSString *curve);
+FOUNDATION_EXPORT NSString *_Nullable LGCompatReadCornerCurve(CALayer *layer);
 
 NS_ASSUME_NONNULL_END
