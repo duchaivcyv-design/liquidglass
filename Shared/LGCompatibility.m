@@ -94,4 +94,19 @@ static void LGCompatSetLayerCornerCurve(id self, SEL cmd, id value) {
 }
 static id LGCompatLayerFilters(id self, SEL cmd) {
     (void)cmd;
-    return objc_getAssociatedObject(self, kLGCompatLayerFiltersKe
+    return objc_getAssociatedObject(self, kLGCompatLayerFiltersKey);
+}
+static void LGCompatSetLayerFilters(id self, SEL cmd, id filters) {
+    (void)cmd;
+    objc_setAssociatedObject(self, kLGCompatLayerFiltersKey, filters,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+static id LGCompatLayerBackgroundFilters(id self, SEL cmd) {
+    (void)cmd;
+    return objc_getAssociatedObject(self, kLGCompatLayerBackgroundFiltersKey);
+}
+static void LGCompatSetLayerBackgroundFilters(id self, SEL cmd, id filters) {
+    (void)cmd;
+    objc_setAssociatedObject(self, kLGCompatLayerBackgroundFiltersKey, filters,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
