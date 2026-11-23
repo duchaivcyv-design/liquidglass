@@ -1,0 +1,79 @@
+name: build-rootful-ios12-plus
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    env:
+      IOS12_SDK_VERSION: "16.5"
+      IOS12_ARCHS: "arm64"
+      DEVICE_TARGET: "iphone:clang:16.5:12.0"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Theos
+        uses: actions/checkout@v4
+        with:
+          repository: theos/theos
+          path: theos
+          submodules: recursive
+
+      - name: Cache SDK
+        uses: actions/cache@v4
+        with:
+          path: theos/sdks
+          key: ios12-rootful-sdk-16.5
+
+      - name: Download SDK
+        run: |
+          if [ ! -d theos/sdks/iPhoneOS16.5.sdk ]; then
+            curl -fL https://github.com/theos/sdks/archive/master.zip -o sdks.zip
+            unzip -q sdks.zip
+            mkdir -p theos/sdks
+            mv sdks-master/*.sdk theos/sdks/
+            rm -rf sdks.zip sdks-master
+          fi
+
+      - name: Setup environment
+        run: |
+          echo "THEOS=$GITHUB_WORKSPACE/theos" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: |
+          brew install ldid make
+          echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
+
+      - name: Build Rootful iOS 12+
+        run: |
+          set -euo pipefail
+
+          make clean
+
+          make package \
+            ARCHS=arm64 \
+            TARGET="$DEVICE_TARGET" \
+            FINALPACKAGE=1 \
+            THEOS_PACKAGE_SCHEME=
+
+          mkdir -p artifacts
+          find packages -maxdepth 1 -type f -name '*.deb' -exec cp {} artifacts/ \;
+
+          test "$(find artifacts -maxdepth 1 -name '*.deb' | wc -l | tr -d ' ')" -eq 1
+
+      - name: Upload Rootful DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: rootful-ios12-plus
+          path: artifacts/*.deb
+          if-no-files-found: error
