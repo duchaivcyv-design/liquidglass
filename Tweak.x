@@ -1,5 +1,3 @@
-
-
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #import <objc/message.h>
@@ -217,9 +215,6 @@ static void LG_safeModeAlertLog(NSString *format, ...) {
 
 static void LG_requestRespring(void) {
     static const char * const processNames[] = {
-        "chronod",
-        "WidgetRenderer_Default",
-        "WidgetRenderer_CarPlay",
         "backboardd",
         NULL,
     };
@@ -300,88 +295,45 @@ static void LG_showSafeModeAlertIfNeeded(void) {
 
     UIViewController *root = nil;
     UIWindow *window = nil;
-    if (@available(iOS 13.0, *)) {
-        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-            LG_safeModeAlertLog(@"scene=%@ class=%@ state=%ld",
-                                scene.session.persistentIdentifier,
-                                NSStringFromClass(scene.class),
-                                (long)scene.activationState);
-            if (![scene isKindOfClass:UIWindowScene.class]) continue;
-            if (scene.activationState != UISceneActivationStateForegroundActive) continue;
-            UIWindowScene *windowScene = (UIWindowScene *)scene;
-            UIWindow *visibleKeyWindow = nil;
-            for (UIWindow *candidate in windowScene.windows) {
-                NSString *className = NSStringFromClass(candidate.class);
-                LG_safeModeAlertLog(@"window scene=%@ class=%@ level=%.1f hidden=%d alpha=%.2f key=%d frame=%@",
-                                    scene.session.persistentIdentifier, className,
-                                    candidate.windowLevel, candidate.hidden, candidate.alpha,
-                                    candidate.isKeyWindow, NSStringFromCGRect(candidate.frame));
-                if (candidate.hidden || candidate.alpha <= 0.0 ||
-                    !candidate.rootViewController) continue;
-                if (candidate.isKeyWindow) visibleKeyWindow = candidate;
-                if (![className containsString:@"SBCoverSheetWindow"]) continue;
-                LG_safeModeAlertLog(@"selected coversheet scene=%@ window=%@",
-                                    scene.session.persistentIdentifier, candidate);
-                window = candidate;
-                root = LG_topPresentedController(candidate.rootViewController);
-                break;
-            }
-            if (!window && visibleKeyWindow) {
-                LG_safeModeAlertLog(@"selected visible key window scene=%@ class=%@ window=%@",
-                                    scene.session.persistentIdentifier,
-                                    NSStringFromClass(visibleKeyWindow.class),
-                                    visibleKeyWindow);
-                window = visibleKeyWindow;
-                root = LG_topPresentedController(visibleKeyWindow.rootViewController);
-            }
-            if (window) break;
+    UIWindow *visibleKeyWindow = nil;
+
+    for (UIWindow *candidate in UIApplication.sharedApplication.windows) {
+        if (candidate.hidden || candidate.alpha <= 0.0 || !candidate.rootViewController) continue;
+        NSString *className = NSStringFromClass(candidate.class);
+        LG_safeModeAlertLog(@"ios12 window class=%@ level=%.1f hidden=%d alpha=%.2f key=%d",
+                            className, candidate.windowLevel, candidate.hidden,
+                            candidate.alpha, candidate.isKeyWindow);
+        if ([className containsString:@"SBCoverSheetWindow"]) {
+            window = candidate;
+            root = LG_topPresentedController(candidate.rootViewController);
+            break;
         }
-    } else {
-        /* iOS 12 has no UIScene/connectedScenes; use the legacy application window list. */
-        UIWindow *visibleKeyWindow = nil;
+        if (candidate.isKeyWindow) visibleKeyWindow = candidate;
+    }
+
+    if (!window && visibleKeyWindow) {
+        window = visibleKeyWindow;
+        root = LG_topPresentedController(visibleKeyWindow.rootViewController);
+    }
+
+    if (!window) {
         for (UIWindow *candidate in UIApplication.sharedApplication.windows) {
             if (candidate.hidden || candidate.alpha <= 0.0 || !candidate.rootViewController) continue;
-            NSString *className = NSStringFromClass(candidate.class);
-            LG_safeModeAlertLog(@"legacy window class=%@ level=%.1f hidden=%d alpha=%.2f key=%d",
-                                className, candidate.windowLevel, candidate.hidden,
-                                candidate.alpha, candidate.isKeyWindow);
-            if ([className containsString:@"SBCoverSheetWindow"]) {
-                window = candidate;
-                root = LG_topPresentedController(candidate.rootViewController);
-                break;
-            }
-            if (candidate.isKeyWindow) visibleKeyWindow = candidate;
-        }
-        if (!window && visibleKeyWindow) {
-            window = visibleKeyWindow;
-            root = LG_topPresentedController(visibleKeyWindow.rootViewController);
-        }
-        if (!window) {
-            for (UIWindow *candidate in UIApplication.sharedApplication.windows) {
-                if (candidate.hidden || candidate.alpha <= 0.0 || !candidate.rootViewController) continue;
-                window = candidate;
-                root = LG_topPresentedController(candidate.rootViewController);
-                break;
-            }
+            window = candidate;
+            root = LG_topPresentedController(candidate.rootViewController);
+            break;
         }
     }
-    if (!window) {
+
+    if (!window || !root) {
         LG_safeModeAlertLog(@"no visible presentation host yet; retrying");
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC),
                        dispatch_get_main_queue(), ^{ LG_showSafeModeAlertIfNeeded(); });
         return;
     }
+
     sLGSafeModeAlertWindow = window;
-    id scene = nil;
-    if ([window respondsToSelector:NSSelectorFromString(@"windowScene")]) {
-        scene = ((id (*)(id, SEL))objc_msgSend)(window, NSSelectorFromString(@"windowScene"));
-    }
-    id session = [scene respondsToSelector:NSSelectorFromString(@"session")]
-        ? ((id (*)(id, SEL))objc_msgSend)(scene, NSSelectorFromString(@"session")) : nil;
-    id persistentIdentifier = [session respondsToSelector:NSSelectorFromString(@"persistentIdentifier")]
-        ? ((id (*)(id, SEL))objc_msgSend)(session, NSSelectorFromString(@"persistentIdentifier")) : nil;
-    LG_safeModeAlertLog(@"presentation host scene=%@ level=%.1f hidden=%d key=%d root=%@ frame=%@",
-                        persistentIdentifier ?: @"legacy-window",
+    LG_safeModeAlertLog(@"presentation host ios12-window level=%.1f hidden=%d key=%d root=%@ frame=%@",
                         window.windowLevel, window.hidden, window.isKeyWindow,
                         root, NSStringFromCGRect(window.frame));
 
@@ -401,6 +353,7 @@ static void LG_showSafeModeAlertIfNeeded(void) {
         LG_closeSafeModeAlert();
         LG_requestRespring();
     }]];
+
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 300 * NSEC_PER_MSEC),
                    dispatch_get_main_queue(), ^{
         LG_safeModeAlertLog(@"presentation check rootWindow=%@ overlay=%@ expected=%@",
@@ -411,9 +364,8 @@ static void LG_showSafeModeAlertIfNeeded(void) {
             return;
         }
         [root presentViewController:alert animated:YES completion:^{
-            LG_safeModeAlertLog(@"presentation completed alertWindow=%@ alertViewWindow=%@ frame=%@",
-                                alert.view.window, alert.view.window,
-                                NSStringFromCGRect(alert.view.frame));
+            LG_safeModeAlertLog(@"presentation completed alertWindow=%@ frame=%@",
+                                alert.view.window, NSStringFromCGRect(alert.view.frame));
             unlink(kLGSafeModePendingPath);
         }];
     });
