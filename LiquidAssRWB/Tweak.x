@@ -3,6 +3,7 @@
 
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
+#import <objc/message.h>
 #import "../Shared/LGSharedSupport.h"
 
 static BOOL kIsEnabled = YES;
@@ -96,6 +97,15 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
     return kIsEnabled && bundleIdentifier.length > 0 && [kWidgetBundleIdentifiers containsObject:bundleIdentifier];
 }
 
+static void RWBApplyDarkStyleIfAvailable(UIWindow *window) {
+    if (!window || !kIsEnabled || !kForceDarkMode) return;
+    SEL sel = NSSelectorFromString(@"setOverrideUserInterfaceStyle:");
+    if ([window respondsToSelector:sel]) {
+        // UIUserInterfaceStyleDark == 2 (iOS 13+)
+        ((void (*)(id, SEL, NSInteger))objc_msgSend)(window, sel, 2);
+    }
+}
+
 %group RWBSpringBoard
 
 %hook CHUISAvocadoHostViewController
@@ -182,24 +192,40 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
 
 %property (nonatomic, strong) NSNumber *rwb_shouldHideBackground;
 
-- (UIWindow *)initWithWindowScene:(UIWindowScene *)scene {
-    if ([scene isKindOfClass:%c(CHUISAvocadoWindowScene)]) {
-        CHUISAvocadoWindowScene *avocadoScene = (CHUISAvocadoWindowScene *)scene;
-        if (ShouldHandleWidget(avocadoScene.widget.extensionBundleIdentifier)) {
-            self.rwb_shouldHideBackground = @YES;
-        }
-    } else if ([scene isKindOfClass:%c(CHUISWidgetScene)]) {
-        CHUISWidgetScene *widgetScene = (CHUISWidgetScene *)scene;
-        if (ShouldHandleWidget(widgetScene.widget.extensionBundleIdentifier)) {
-            self.rwb_shouldHideBackground = @YES;
+- (instancetype)initWithFrame:(CGRect)frame {
+    UIWindow *window = %orig;
+    RWBApplyDarkStyleIfAvailable(window);
+    return window;
+}
+
+%end
+
+%group RWB_iOS13
+
+%hook UIWindow
+
+- (UIWindow *)initWithWindowScene:(id)scene {
+    if (scene) {
+        Class avocadoSceneClass = objc_getClass("CHUISAvocadoWindowScene");
+        Class widgetSceneClass = objc_getClass("CHUISWidgetScene");
+        if (avocadoSceneClass && [scene isKindOfClass:avocadoSceneClass]) {
+            NSString *extId = [[scene valueForKey:@"widget"] valueForKey:@"extensionBundleIdentifier"];
+            if (ShouldHandleWidget(extId)) {
+                self.rwb_shouldHideBackground = @YES;
+            }
+        } else if (widgetSceneClass && [scene isKindOfClass:widgetSceneClass]) {
+            NSString *extId = [[scene valueForKey:@"widget"] valueForKey:@"extensionBundleIdentifier"];
+            if (ShouldHandleWidget(extId)) {
+                self.rwb_shouldHideBackground = @YES;
+            }
         }
     }
     UIWindow *window = %orig;
-    if (window && kIsEnabled && kForceDarkMode) {
-        [window setOverrideUserInterfaceStyle:UIUserInterfaceStyleDark];
-    }
+    RWBApplyDarkStyleIfAvailable(window);
     return window;
 }
+
+%end
 
 %end
 
@@ -251,7 +277,13 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
         NSMutableDictionary *threadDict = [NSThread currentThread].threadDictionary;
         threadDict[@"rwb_shouldHideBackground"] = @YES;
         if (@available(iOS 17, *)) {
-            if (self.opaque) self.opaque = NO;
+            SEL opaqueSel = NSSelectorFromString(@"setOpaque:");
+            if ([self respondsToSelector:opaqueSel]) {
+                BOOL isOpaque = [[self valueForKey:@"opaque"] boolValue];
+                if (isOpaque) {
+                    ((void (*)(id, SEL, BOOL))objc_msgSend)(self, opaqueSel, NO);
+                }
+            }
         }
 
         %orig;
@@ -350,7 +382,7 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
 %end
 
 %ctor {
-    if (NSProcessInfo.processInfo.operatingSystemVersion.majorVersion < 14) return;
+    if (NSProcessInfo.processInfo.operatingSystemVersion.majorVersion < 12) return;
     ReloadPrefs();
     if (!kIsEnabled) return;
 
@@ -367,6 +399,9 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
     } else if ([bundleIdentifier isEqualToString:@"com.apple.chronod"] ||
                [bundleIdentifier hasPrefix:@"com.apple.chrono.WidgetRenderer-"]) {
         %init(RWB);
+        if (@available(iOS 13, *)) {
+            %init(RWB_iOS13);
+        }
         if (@available(iOS 17, *)) {
             %init(RWB_17);
         } else if (@available(iOS 16, *)) {
