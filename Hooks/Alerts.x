@@ -1,6 +1,7 @@
 #import "../Shared/LGSharedSupport.h"
 #import "../Shared/LGGlassKit.h"
 #import "../Shared/LGLiveBackdropView.h"
+#import "../Shared/LGCompatibility.h"
 #import <objc/runtime.h>
 
 static void *kLGAlertGlassKey = &kLGAlertGlassKey;
@@ -165,7 +166,7 @@ static void LGAlertInstallNativeGlass(UIAlertController *controller) {
 
 static BOOL LGAlertColorLooksRed(UIColor *color, UITraitCollection *traits) {
     if (!color) return NO;
-    UIColor *resolved = [color resolvedColorWithTraitCollection:traits];
+    UIColor *resolved = LGCompatResolvedColor(color, traits);
     CGFloat hue = 0.0, saturation = 0.0, brightness = 0.0, alpha = 0.0;
     if ([resolved getHue:&hue saturation:&saturation brightness:&brightness alpha:&alpha])
         return saturation > 0.35 && brightness > 0.35 && (hue < 0.08 || hue > 0.92);
@@ -234,7 +235,7 @@ static void LGAlertStyleActionLabels(UIView *root, UIView *representation) {
                 : 0.0;
             label.transform = CGAffineTransformMakeTranslation(centerOffset, 0.0);
             UIColor *textColor = LGAlertActionLabelIsDestructive(label, representation)
-                ? UIColor.systemRedColor : UIColor.labelColor;
+                ? UIColor.systemRedColor : LGCompatLabelColorValue();
             label.alpha = 1.0;
             label.tintAdjustmentMode = UIViewTintAdjustmentModeNormal;
             label.tintColor = textColor;
@@ -474,7 +475,7 @@ static void LGAlertStyleActionRepresentation(UIView *representation) {
     if (!background) {
         background = [[UIView alloc] initWithFrame:CGRectZero];
         background.userInteractionEnabled = NO;
-        background.layer.cornerCurve = kCACornerCurveContinuous;
+        LGCompatApplyCornerCurve(background.layer, kCACornerCurveContinuous);
         [representation insertSubview:background atIndex:0];
         objc_setAssociatedObject(representation, kLGAlertActionBackgroundKey,
                                  background, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -727,7 +728,7 @@ static void LGAlertProbeHierarchy(UIAlertController *controller, NSString *reaso
 }
 
 %new
-- (void)lg_alertActionHoverChanged:(UIHoverGestureRecognizer *)gesture {
+- (void)lg_alertActionHoverChanged:(UIGestureRecognizer *)gesture {
     if (!LGAlertsEnabled() || !LGAlertViewUsesAlertStyle((UIView *)self)) return;
     CGFloat opacity = gesture.state == UIGestureRecognizerStateBegan ||
                       gesture.state == UIGestureRecognizerStateChanged
@@ -765,8 +766,9 @@ static void LGAlertProbeHierarchy(UIAlertController *controller, NSString *reaso
                                  OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
     if (!objc_getAssociatedObject(view, kLGAlertActionHoverGestureKey)) {
-        if (@available(iOS 13.0, *)) {
-            UIHoverGestureRecognizer *hover = [[UIHoverGestureRecognizer alloc]
+        Class hoverCls = LGCompatHoverGestureRecognizerClass();
+        if (hoverCls) {
+            UIGestureRecognizer *hover = [[hoverCls alloc]
                 initWithTarget:self action:@selector(lg_alertActionHoverChanged:)];
             hover.delegate = (id<UIGestureRecognizerDelegate>)self;
             [view addGestureRecognizer:hover];
