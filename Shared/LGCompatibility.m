@@ -192,6 +192,22 @@ void LGCompatSetButtonShowsMenu(UIButton *button, BOOL show) {
         ((void (*)(id, SEL, BOOL))objc_msgSend)(button, sel, show);
 }
 
+/* ---- new helpers for Hooks/Alerts.x ---- */
+
+UIColor *LGCompatResolvedColor(UIColor *color, UITraitCollection *traits) {
+    if (!color) return nil;
+    if (!traits) return color;
+    SEL sel = NSSelectorFromString(@"resolvedColorWithTraitCollection:");
+    if ([color respondsToSelector:sel])
+        return ((id (*)(id, SEL, id))objc_msgSend)(color, sel, traits);
+    /* iOS 12: semantic colours are already static, no resolution needed. */
+    return color;
+}
+
+Class LGCompatHoverGestureRecognizerClass(void) {
+    return NSClassFromString(@"UIHoverGestureRecognizer");
+}
+
 static NSInteger LGCompatTraitUserInterfaceStyle(id self, SEL cmd) {
     (void)self; (void)cmd; return 0; // unspecified/light on iOS 12
 }
