@@ -9,6 +9,55 @@
 #import <objc/runtime.h>
 #import <notify.h>
 
+static UIColor *LGRCompatSystemGroupedBackgroundColor(void) {
+    if (@available(iOS 13.0, *)) {
+        return [UIColor systemGroupedBackgroundColor];
+    }
+    return [UIColor groupTableViewBackgroundColor];
+}
+
+static UIColor *LGRCompatSecondaryLabelColor(void) {
+    if (@available(iOS 13.0, *)) {
+        return [UIColor secondaryLabelColor];
+    }
+    return [UIColor colorWithWhite:0.42 alpha:1.0];
+}
+
+static UIColor *LGRCompatTertiaryLabelColor(void) {
+    if (@available(iOS 13.0, *)) {
+        return [UIColor tertiaryLabelColor];
+    }
+    return [UIColor colorWithWhite:0.58 alpha:1.0];
+}
+
+static void LGRApplyContinuousCornerCurve(CALayer *layer) {
+    if (!layer) return;
+    if (@available(iOS 13.0, *)) {
+        layer.cornerCurve = kCACornerCurveContinuous;
+    }
+}
+
+static UIImage *LGRCompatChevronRightImage(void) {
+    if (@available(iOS 13.0, *)) {
+        UIImage *img = [UIImage systemImageNamed:@"chevron.right"];
+        if (img) return img;
+    }
+    NSString *fallbackTitle = @">";
+    UIFont *font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+    NSDictionary *attrs = @{
+        NSFontAttributeName: font,
+        NSForegroundColorAttributeName: [UIColor whiteColor]
+    };
+    CGSize size = [fallbackTitle sizeWithAttributes:attrs];
+    CGFloat side = MAX(18.0, ceil(MAX(size.width, size.height) + 4.0));
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, 0.0);
+    [fallbackTitle drawAtPoint:CGPointMake((side - size.width) * 0.5, (side - size.height) * 0.5)
+              withAttributes:attrs];
+    UIImage *rendered = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return [rendered imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+}
+
 @interface LGPRootListController () <UIScrollViewDelegate>
 @property (nonatomic, strong) UIScrollView *lg_scrollView;
 @property (nonatomic, strong) UIStackView *lg_stackView;
@@ -59,7 +108,7 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = LGPrefsAppName();
-    self.view.backgroundColor = [UIColor systemGroupedBackgroundColor];
+    self.view.backgroundColor = LGRCompatSystemGroupedBackgroundColor();
     if ([self respondsToSelector:@selector(table)] && self.table) self.table.hidden = YES;
     self.navigationItem.rightBarButtonItem = LGMakeCircularMenuItem(self, @selector(handleApplyPressed),
                                                                       @selector(handleResetPressed),
@@ -236,11 +285,17 @@
     }
 }
 
+- (void)handleGlobalToggleChanged:(UISwitch *)sender {
+    LGWritePreferenceAndMaybeRequireRespring(@"Global.Enabled", @(sender.isOn));
+    [self updateMenuAvailability];
+    [self updateRespringBarAnimated:YES];
+}
+
 - (UIView *)globalToggleCard {
     UIView *card = [[UIView alloc] initWithFrame:CGRectZero];
     card.backgroundColor = LGSubpageCardBackgroundColor();
     card.layer.cornerRadius = 23.25;
-    card.layer.cornerCurve = kCACornerCurveContinuous;
+    LGRApplyContinuousCornerCurve(card.layer);
 
     UIStackView *stack = [[UIStackView alloc] initWithFrame:CGRectZero];
     stack.axis = UILayoutConstraintAxisVertical;
@@ -255,19 +310,14 @@
     UILabel *subtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     subtitleLabel.text = LGLocalized(@"prefs.subtitle.global_enabled");
     subtitleLabel.numberOfLines = 0;
-    subtitleLabel.textColor = [UIColor secondaryLabelColor];
+    subtitleLabel.textColor = LGRCompatSecondaryLabelColor();
     subtitleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular];
 
     UISwitch *toggle = [[LGPrefsSwitchClass() alloc] initWithFrame:CGRectZero];
     toggle.onTintColor = [UIColor systemBlueColor];
     toggle.on = [self isGlobalEnabled];
     self.lg_globalToggle = toggle;
-    [toggle addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
-        UISwitch *sender = (UISwitch *)action.sender;
-        LGWritePreferenceAndMaybeRequireRespring(@"Global.Enabled", @(sender.isOn));
-        [self updateMenuAvailability];
-        [self updateRespringBarAnimated:YES];
-    }] forControlEvents:UIControlEventValueChanged];
+    [toggle addTarget:self action:@selector(handleGlobalToggleChanged:) forControlEvents:UIControlEventValueChanged];
 
     UIView *headerRow = [[UIView alloc] initWithFrame:CGRectZero];
     headerRow.translatesAutoresizingMaskIntoConstraints = NO;
@@ -307,7 +357,7 @@
     UILabel *eyebrow = [[UILabel alloc] initWithFrame:CGRectZero];
     eyebrow.text = LGLocalized(@"prefs.hero.eyebrow");
     eyebrow.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    eyebrow.textColor = [UIColor secondaryLabelColor];
+    eyebrow.textColor = LGRCompatSecondaryLabelColor();
     eyebrow.translatesAutoresizingMaskIntoConstraints = NO;
 
     UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
@@ -318,7 +368,7 @@
     UILabel *subtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     subtitleLabel.text = LGLocalized(@"prefs.hero.subtitle");
     subtitleLabel.numberOfLines = 0;
-    subtitleLabel.textColor = [UIColor secondaryLabelColor];
+    subtitleLabel.textColor = LGRCompatSecondaryLabelColor();
     subtitleLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
 
@@ -358,7 +408,7 @@
         UILabel *subtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
         subtitleLabel.text = subtitle;
         subtitleLabel.numberOfLines = 0;
-        subtitleLabel.textColor = [UIColor secondaryLabelColor];
+        subtitleLabel.textColor = LGRCompatSecondaryLabelColor();
         subtitleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
         [sectionStack addArrangedSubview:subtitleLabel];
     }
@@ -376,7 +426,7 @@
     UIView *card = [[UIView alloc] initWithFrame:CGRectZero];
     card.backgroundColor = LGSubpageCardBackgroundColor();
     card.layer.cornerRadius = 23.25;
-    card.layer.cornerCurve = kCACornerCurveContinuous;
+    LGRApplyContinuousCornerCurve(card.layer);
     card.layer.masksToBounds = YES;
 
     UIStackView *stack = [[UIStackView alloc] initWithFrame:CGRectZero];
@@ -428,7 +478,7 @@
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.backgroundColor = LGSubpageCardBackgroundColor();
     button.layer.cornerRadius = 23.25;
-    button.layer.cornerCurve = kCACornerCurveContinuous;
+    LGRApplyContinuousCornerCurve(button.layer);
     button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
     if (action) {
         [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
@@ -438,7 +488,7 @@
     chip.translatesAutoresizingMaskIntoConstraints = NO;
     chip.backgroundColor = [color colorWithAlphaComponent:0.14];
     chip.layer.cornerRadius = 18.0;
-    chip.layer.cornerCurve = kCACornerCurveContinuous;
+    LGRApplyContinuousCornerCurve(chip.layer);
 
     UIView *glyph = image ? [[UIImageView alloc] initWithImage:image]
                           : LGMakeNavCardGlyphView(symbolName, color);
@@ -462,13 +512,13 @@
     UILabel *subtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     subtitleLabel.text = subtitle;
     subtitleLabel.numberOfLines = 0;
-    subtitleLabel.textColor = [UIColor secondaryLabelColor];
+    subtitleLabel.textColor = LGRCompatSecondaryLabelColor();
     subtitleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
 
-    UIImageView *chevron = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.right"]];
+    UIImageView *chevron = [[UIImageView alloc] initWithImage:LGRCompatChevronRightImage()];
     chevron.translatesAutoresizingMaskIntoConstraints = NO;
-    chevron.tintColor = [UIColor tertiaryLabelColor];
+    chevron.tintColor = LGRCompatTertiaryLabelColor();
     chevron.contentMode = UIViewContentModeScaleAspectFit;
     [chevron setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [chevron setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
