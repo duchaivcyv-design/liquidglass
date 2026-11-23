@@ -3,6 +3,7 @@
 #import "../Shared/LGLiveBackdropView.h"
 #import "../Shared/LGGlassKit.h"
 #import "../Shared/LGSharedSupport.h"
+#import "../Shared/LGCompatibility.h"
 #import <objc/runtime.h>
 
 static const NSInteger kCtxDividerTag    = 0xD171;
@@ -41,7 +42,7 @@ static void ctxRememberVisualState(UIView *view) {
         objc_setAssociatedObject(view, kCtxOriginalAlphaKey, @(view.alpha), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         objc_setAssociatedObject(view, kCtxOriginalHiddenKey, @(view.hidden), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         objc_setAssociatedObject(view, kCtxOriginalRadiusKey, @(view.layer.cornerRadius), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        objc_setAssociatedObject(view, kCtxOriginalCurveKey, view.layer.cornerCurve ?: @"", OBJC_ASSOCIATION_COPY_NONATOMIC);
+        objc_setAssociatedObject(view, kCtxOriginalCurveKey, LGCompatReadCornerCurve(view.layer) ?: @"", OBJC_ASSOCIATION_COPY_NONATOMIC);
         objc_setAssociatedObject(view, kCtxOriginalMasksKey, @(view.layer.masksToBounds), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
 }
@@ -96,7 +97,7 @@ static void applyContextMenuRoundedStyle(UIView *view) {
         if (pill > 0.0) r = pill;
     }
     if (fabs(view.layer.cornerRadius - r) > 0.5) view.layer.cornerRadius = r;
-    view.layer.cornerCurve = kCACornerCurveContinuous;
+    LGCompatApplyCornerCurve(view.layer, kCACornerCurveContinuous);
 }
 
 static BOOL shouldHideContextMenuSeparatorView(UIView *view) {
@@ -233,7 +234,7 @@ static void injectGlassIntoContextEffectView(UIVisualEffectView *fx, int attempt
     if (glass.superview != container) [container insertSubview:glass atIndex:0];
     glass.frame                = contextMenuVisualBounds(container);
     glass.layer.cornerRadius   = contextMenuCornerRadius();
-    glass.layer.cornerCurve    = kCACornerCurveContinuous;
+    LGCompatApplyCornerCurve(glass.layer, kCACornerCurveContinuous);
     glass.layer.masksToBounds  = YES;
     [glass applyFilters];
     if (LGDebugLoggingEnabled() && ![objc_getAssociatedObject(fx, kCtxGlassProbeKey) boolValue]) {
@@ -303,7 +304,7 @@ static void relayoutContextMenuCellContent(UIView *contentView) {
     if ((self = [super initWithFrame:frame])) {
         self.userInteractionEnabled = NO;
         self.clipsToBounds = YES;
-        self.layer.cornerCurve = kCACornerCurveContinuous;
+        LGCompatApplyCornerCurve(self.layer, kCACornerCurveContinuous);
         self.layer.cornerRadius = contextMenuCornerRadius();
         _glowLayer = [CAGradientLayer layer];
         _glowLayer.type = kCAGradientLayerRadial;
@@ -369,7 +370,7 @@ static void relayoutContextMenuCellContent(UIView *contentView) {
     if ((self = [super initWithFrame:frame])) {
         self.userInteractionEnabled = NO;
         self.layer.masksToBounds = YES;
-        self.layer.cornerCurve = kCACornerCurveContinuous;
+        LGCompatApplyCornerCurve(self.layer, kCACornerCurveContinuous);
         self.alpha = 0.0;
         self.hidden = YES;
     }
@@ -440,7 +441,7 @@ static void restoreContextMenuSubtree(UIView *view) {
         view.hidden = [objc_getAssociatedObject(view, kCtxOriginalHiddenKey) boolValue];
         view.layer.cornerRadius = [objc_getAssociatedObject(view, kCtxOriginalRadiusKey) doubleValue];
         NSString *curve = objc_getAssociatedObject(view, kCtxOriginalCurveKey);
-        view.layer.cornerCurve = curve.length ? curve : kCACornerCurveCircular;
+        LGCompatApplyCornerCurve(view.layer, curve.length ? curve : kCACornerCurveCircular);
         view.layer.masksToBounds = [objc_getAssociatedObject(view, kCtxOriginalMasksKey) boolValue];
         objc_setAssociatedObject(view, kCtxOriginalAlphaKey, nil, OBJC_ASSOCIATION_ASSIGN);
         objc_setAssociatedObject(view, kCtxOriginalHiddenKey, nil, OBJC_ASSOCIATION_ASSIGN);
