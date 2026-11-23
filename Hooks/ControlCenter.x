@@ -3,6 +3,7 @@
 #import "../Shared/LGLiveBackdropView.h"
 #import "../Shared/LGGlassKit.h"
 #import "../Shared/LGSharedSupport.h"
+#import "../Shared/LGCompatibility.h"
 #import <objc/runtime.h>
 
 #pragma mark - taxonomy
@@ -629,7 +630,7 @@ static void ccRememberOriginalRoundState(UIView *view) {
                              @(view.layer.cornerRadius),
                              OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     objc_setAssociatedObject(view, kCCRoundOriginalCurveKey,
-                             view.layer.cornerCurve ?: (id)[NSNull null],
+                             LGCompatReadCornerCurve(view.layer) ?: (id)[NSNull null],
                              OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     objc_setAssociatedObject(view, kCCRoundOriginalMasksKey,
                              @(view.layer.masksToBounds),
@@ -647,7 +648,7 @@ static void ccRestoreRoundState(UIView *view) {
     objc_setAssociatedObject(view.layer, kCCRoundDesiredRadiusKey, nil,
                              OBJC_ASSOCIATION_ASSIGN);
     view.layer.cornerRadius = radius.doubleValue;
-    view.layer.cornerCurve = curve == [NSNull null] ? nil : curve;
+    LGCompatApplyCornerCurve(view.layer, curve == [NSNull null] ? nil : (NSString *)curve);
     view.layer.masksToBounds = masks.boolValue;
 
     objc_setAssociatedObject(view, kCCRoundOriginalRadiusKey, nil, OBJC_ASSOCIATION_ASSIGN);
@@ -676,7 +677,7 @@ static void lgRound(UIView *v, CGFloat r) {
     objc_setAssociatedObject(v.layer, kCCRoundDesiredRadiusKey, @(r),
                              OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     if (fabs(v.layer.cornerRadius - r) > 0.5) v.layer.cornerRadius = r;
-    v.layer.cornerCurve   = kCACornerCurveContinuous;
+    LGCompatApplyCornerCurve(v.layer, kCACornerCurveContinuous);
     v.layer.masksToBounds = YES;
 }
 
