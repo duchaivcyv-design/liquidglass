@@ -111,6 +111,34 @@ static void LGCompatSetLayerBackgroundFilters(id self, SEL cmd, id filters) {
                              OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
+/* ---- cornerCurve helpers (avoid -Wunguarded-availability-new at call sites) ----
+ *
+ * Direct property access `layer.cornerCurve` / `layer.cornerCurve = ...` is
+ * tagged API_AVAILABLE(ios(13.0)) by the SDK, which fires -Werror under a
+ * 12.0 deployment target. These helpers go through the runtime so the caller
+ * never touches the property directly:
+ *
+ *   iOS 12 : shim installs setCornerCurve:/cornerCurve: via class_addMethod
+ *            in the constructor below -> respondsToSelector: == YES -> shim IMP
+ *   iOS 13+: native CALayer methods -> respondsToSelector: == YES -> native IMP
+ */
+void LGCompatApplyCornerCurve(CALayer *layer, NSString *curve) {
+    if (!layer || !curve) return;
+    SEL sel = NSSelectorFromString(@"setCornerCurve:");
+    if ([layer respondsToSelector:sel]) {
+        ((void (*)(id, SEL, id))objc_msgSend)(layer, sel, curve);
+    }
+}
+
+NSString *LGCompatReadCornerCurve(CALayer *layer) {
+    if (!layer) return nil;
+    SEL sel = NSSelectorFromString(@"cornerCurve");
+    if ([layer respondsToSelector:sel]) {
+        return ((id (*)(id, SEL))objc_msgSend)(layer, sel);
+    }
+    return nil;
+}
+
 static NSInteger LGCompatTraitUserInterfaceStyle(id self, SEL cmd) {
     (void)self; (void)cmd; return 0; // unspecified/light on iOS 12
 }
