@@ -114,13 +114,23 @@ NSString *LGPrefsSurfaceSubtitle(NSString *identifier) {
     return @"";
 }
 
+static UIColor *LGPrefsIndigoColor(void) {
+    if (@available(iOS 13.0, *)) {
+        return UIColor.systemIndigoColor;
+    }
+    return [UIColor colorWithRed:88.0 / 255.0
+                           green:86.0 / 255.0
+                            blue:214.0 / 255.0
+                           alpha:1.0];
+}
+
 UIColor *LGPrefsSurfaceTintColor(NSString *identifier) {
     if ([identifier isEqualToString:LGPrefsSurfaceLockscreen]) return UIColor.systemRedColor;
     if ([identifier isEqualToString:LGPrefsSurfaceAppLibrary]) return UIColor.systemGreenColor;
-    if ([identifier isEqualToString:LGPrefsSurfaceMoreOptions]) return UIColor.systemIndigoColor;
+    if ([identifier isEqualToString:LGPrefsSurfaceMoreOptions]) return LGPrefsIndigoColor();
     if ([identifier isEqualToString:LGPrefsSurfaceSettings]) return UIColor.systemGrayColor;
     if ([identifier isEqualToString:LGPrefsSurfaceKeyboard]) return UIColor.systemOrangeColor;
-    if ([identifier isEqualToString:LGPrefsSurfaceTabBar]) return UIColor.systemIndigoColor;
+    if ([identifier isEqualToString:LGPrefsSurfaceTabBar]) return LGPrefsIndigoColor();
     if ([identifier isEqualToString:LGPrefsSurfaceAssistiveTouch]) return UIColor.systemPurpleColor;
     if ([identifier isEqualToString:LGPrefsSurfaceVolumeHUD]) return UIColor.systemYellowColor;
     if ([identifier isEqualToString:LGPrefsSurfacePillHUD]) return UIColor.systemRedColor;
