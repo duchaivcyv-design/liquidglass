@@ -1,3 +1,4 @@
+
 #pragma once
 
 #import <Foundation/Foundation.h>
@@ -35,6 +36,7 @@
 #define UIImageSymbolWeightBold      ((CGFloat)0.40)
 #endif
 
+NS_ASSUME_NONNULL_BEGIN
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED < 130000
 /*
@@ -77,3 +79,5 @@ FOUNDATION_EXPORT BOOL LGCompatIsIOS12OrEarlier(void);
 FOUNDATION_EXPORT BOOL LGCompatUsesLegacyMenus(void);
 FOUNDATION_EXPORT BOOL LGCompatIsDarkAppearance(UITraitCollection * _Nullable traits);
 FOUNDATION_EXPORT void LGCompatInstallRuntimeShims(void);
+
+NS_ASSUME_NONNULL_END
