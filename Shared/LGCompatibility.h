@@ -103,4 +103,18 @@ FOUNDATION_EXPORT UIImage *_Nullable LGCompatSystemImageNamedConfigured(
 FOUNDATION_EXPORT void LGCompatSetButtonMenu(UIButton *button, id _Nullable menu);
 FOUNDATION_EXPORT void LGCompatSetButtonShowsMenu(UIButton *button, BOOL show);
 
+/*
+ * UIColor.resolvedColorWithTraitCollection: is iOS 13+. On iOS 12 the
+ * colour is already static, so the helper just returns the input colour.
+ */
+FOUNDATION_EXPORT UIColor *_Nullable LGCompatResolvedColor(
+    UIColor * _Nonnull color, UITraitCollection * _Nullable traits);
+
+/*
+ * UIHoverGestureRecognizer is iOS 13+. Callers use this lookup instead of
+ * naming the class directly, so the symbol is never resolved on iOS 12
+ * (returns nil there and the caller skips hover setup).
+ */
+FOUNDATION_EXPORT Class _Nullable LGCompatHoverGestureRecognizerClass(void);
+
 NS_ASSUME_NONNULL_END
