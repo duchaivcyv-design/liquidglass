@@ -88,4 +88,19 @@ FOUNDATION_EXPORT void LGCompatInstallRuntimeShims(void);
 FOUNDATION_EXPORT void LGCompatApplyCornerCurve(CALayer *layer, NSString *curve);
 FOUNDATION_EXPORT NSString *_Nullable LGCompatReadCornerCurve(CALayer *layer);
 
+/*
+ * Call-site helpers for iOS 13/14 UIKit APIs that are otherwise gated by
+ * -Wunguarded-availability-new (or by type-mismatch after the #define
+ * remaps above). Each helper probes the selector at runtime, so it works
+ * on iOS 12 via shims and on 13+/14+ via the native implementation.
+ */
+FOUNDATION_EXPORT UIColor *LGCompatSeparatorColorValue(void);
+FOUNDATION_EXPORT UIColor *LGCompatLabelColorValue(void);
+FOUNDATION_EXPORT UIColor *_Nullable LGCompatCreateDynamicColor(
+    UIColor * _Nonnull (^provider)(UITraitCollection *));
+FOUNDATION_EXPORT UIImage *_Nullable LGCompatSystemImageNamedConfigured(
+    NSString *name, id _Nullable configuration);
+FOUNDATION_EXPORT void LGCompatSetButtonMenu(UIButton *button, id _Nullable menu);
+FOUNDATION_EXPORT void LGCompatSetButtonShowsMenu(UIButton *button, BOOL show);
+
 NS_ASSUME_NONNULL_END
