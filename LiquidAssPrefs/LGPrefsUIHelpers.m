@@ -63,6 +63,13 @@ static UIColor *LGUCompatSecondaryGroupedBackgroundColor(void) {
     return [UIColor whiteColor];
 }
 
+static UIColor *LGUCompatIndigoColor(void) {
+    if (@available(iOS 13.0, *)) {
+        return [UIColor systemIndigoColor];
+    }
+    return [UIColor colorWithRed:0.345 green:0.337 blue:0.839 alpha:1.0];
+}
+
 static UIColor *LGUCompatAdaptiveColor(UIColor *lightColor, UIColor *darkColor) {
     if (@available(iOS 13.0, *)) {
         return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull trait) {
@@ -221,7 +228,7 @@ static void LGPerformSoftHaptic(void) {
 
 @interface LGLiveGlassBarButton : UIView
 - (instancetype)initWithTarget:(id)target action:(SEL)action symbolName:(NSString *)symbolName;
-- (void)setPrimaryMenu:(UIMenu *)menu API_AVAILABLE(ios(14.0));
+- (void)setPrimaryMenu:(id)menu;
 - (void)refreshGlass;
 @end
 
@@ -262,7 +269,7 @@ static void LGPerformSoftHaptic(void) {
     [_button addTarget:self action:@selector(clearPressed:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
     [self addSubview:_button];
 
-    _glyph = [[UIImageView alloc] initWithImage:LGUCompatSystemImage(symbolName, 22.0, UIImageWeightSemibold)];
+    _glyph = [[UIImageView alloc] initWithImage:LGUCompatSystemImage(symbolName, 22.0, UIFontWeightSemibold)];
     _glyph.tintColor = LGUCompatLabelColor();
     _glyph.contentMode = UIViewContentModeCenter;
     _glyph.userInteractionEnabled = NO;
@@ -271,10 +278,12 @@ static void LGPerformSoftHaptic(void) {
 }
 
 - (CGSize)intrinsicContentSize { return CGSizeMake(44.0, 44.0); }
-- (void)setPrimaryMenu:(UIMenu *)menu {
+- (void)setPrimaryMenu:(id)menu {
     if (@available(iOS 14.0, *)) {
-        _button.menu = menu;
-        _button.showsMenuAsPrimaryAction = YES;
+        if ([menu isKindOfClass:[UIMenu class]]) {
+            _button.menu = (UIMenu *)menu;
+            _button.showsMenuAsPrimaryAction = YES;
+        }
     }
 }
 - (void)layoutSubviews {
@@ -494,7 +503,7 @@ UIView *LGMakeNavCardGlyphView(NSString *symbolName, UIColor *tintColor) {
     ]];
 
     if ([symbolName isEqualToString:@"lg.lockscreen.stacked"]) {
-        UIImageView *phoneGlyph = [[UIImageView alloc] initWithImage:LGUCompatSystemImage(@"iphone", 17.0, UIImageWeightSemibold)];
+        UIImageView *phoneGlyph = [[UIImageView alloc] initWithImage:LGUCompatSystemImage(@"iphone", 17.0, UIFontWeightSemibold)];
         phoneGlyph.translatesAutoresizingMaskIntoConstraints = NO;
         phoneGlyph.tintColor = tintColor;
         phoneGlyph.contentMode = UIViewContentModeScaleAspectFit;
@@ -505,7 +514,7 @@ UIView *LGMakeNavCardGlyphView(NSString *symbolName, UIColor *tintColor) {
         lockBadge.layer.cornerRadius = 7.0;
         LGUApplyContinuousCornerCurve(lockBadge.layer);
 
-        UIImageView *lockGlyph = [[UIImageView alloc] initWithImage:LGUCompatSystemImage(@"lock.fill", 8.0, UIImageWeightBold)];
+        UIImageView *lockGlyph = [[UIImageView alloc] initWithImage:LGUCompatSystemImage(@"lock.fill", 8.0, UIFontWeightBold)];
         lockGlyph.translatesAutoresizingMaskIntoConstraints = NO;
         lockGlyph.tintColor = tintColor;
         lockGlyph.contentMode = UIViewContentModeScaleAspectFit;
@@ -528,7 +537,7 @@ UIView *LGMakeNavCardGlyphView(NSString *symbolName, UIColor *tintColor) {
         return container;
     }
 
-    UIImageView *glyph = [[UIImageView alloc] initWithImage:LGUCompatSystemImage(symbolName, 16.0, UIImageWeightSemibold)];
+    UIImageView *glyph = [[UIImageView alloc] initWithImage:LGUCompatSystemImage(symbolName, 16.0, UIFontWeightSemibold)];
     glyph.translatesAutoresizingMaskIntoConstraints = NO;
     glyph.tintColor = tintColor;
     glyph.contentMode = UIViewContentModeScaleAspectFit;
@@ -582,7 +591,7 @@ UIBarButtonItem *LGMakeCircularMenuItem(id target, SEL applyAction, SEL resetAct
 
     if (@available(iOS 14.0, *)) {
         UIAction *apply = [UIAction actionWithTitle:LGLocalized(@"prefs.button.apply")
-                                               image:LGUCompatSystemImage(@"checkmark", 0.0, UIImageWeightRegular)
+                                               image:LGUCompatSystemImage(@"checkmark", 0.0, UIFontWeightRegular)
                                           identifier:nil
                                              handler:^(__kindof UIAction *action) {
             (void)action;
@@ -592,7 +601,7 @@ UIBarButtonItem *LGMakeCircularMenuItem(id target, SEL applyAction, SEL resetAct
             }
         }];
         UIAction *reset = [UIAction actionWithTitle:(resetTitle.length ? resetTitle : LGLocalized(@"prefs.button.reset"))
-                                               image:LGUCompatSystemImage(@"arrow.counterclockwise", 0.0, UIImageWeightRegular)
+                                               image:LGUCompatSystemImage(@"arrow.counterclockwise", 0.0, UIFontWeightRegular)
                                           identifier:nil
                                              handler:^(__kindof UIAction *action) {
             (void)action;
@@ -1570,7 +1579,7 @@ UIView *LGMakeDonationCard(UIViewController *controller) {
 
     NSArray<NSDictionary *> *methods = @[
         @{@"name": @"BTC", @"network": @"Bitcoin", @"symbol": @"B", @"color": UIColor.systemOrangeColor, @"address": @"bc1qlv830emqsffqslns2e3kglkgcdnlag0nfnyj4k"},
-        @{@"name": @"ETH", @"network": @"Ethereum", @"symbol": @"E", @"color": UIColor.systemIndigoColor, @"address": @"0x6245EF47c749D1b5c2830b145cB943a8aD826bea"},
+        @{@"name": @"ETH", @"network": @"Ethereum", @"symbol": @"E", @"color": LGUCompatIndigoColor(), @"address": @"0x6245EF47c749D1b5c2830b145cB943a8aD826bea"},
         @{@"name": @"LTC", @"network": @"Litecoin", @"symbol": @"L", @"color": UIColor.systemGrayColor, @"address": @"ltc1q7j6vlgvymxdtwm46u0n22h7m4890cexfp22vfm"},
         @{@"name": @"DOGE", @"network": @"Dogecoin", @"symbol": @"D", @"color": UIColor.systemYellowColor, @"address": @"D76nuR1HWSymSLhFYYhkfpc4JHg1HjvgWD"},
         @{@"name": @"SOL", @"network": @"Solana", @"symbol": @"S", @"color": UIColor.systemPurpleColor, @"address": @"F1rH3PSMHFHXbGLGQiWXGLRaahfYoVULUwhsvrewM37W"},
