@@ -1019,6 +1019,7 @@ static void ccRefreshContentContainerGlass(UIView *container) {
 %end
 
 %ctor {
+    %init;
     if (!LGCompatIsIOS12OrEarlier() && NSClassFromString(@"CAFilter")) %init(LGControlCenterFilterHooks);
     lgObservePreferenceReload(^{
         if (!lgHostEnabled(@"ControlCenter")) ccRestoreAllRoundedViews();
