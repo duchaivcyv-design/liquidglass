@@ -228,10 +228,6 @@ static id LGCompatActionWithTitle(id self, SEL cmd, NSString *title, UIImage *im
 static id LGCompatActionTitle(id self, SEL cmd) { (void)cmd; return objc_getAssociatedObject(self, kLGCompatActionTitleKey); }
 static id LGCompatActionImage(id self, SEL cmd) { (void)cmd; return objc_getAssociatedObject(self, kLGCompatActionImageKey); }
 static id LGCompatActionSender(id self, SEL cmd) { (void)cmd; return objc_getAssociatedObject(self, kLGCompatActionSenderKey); }
-static void LGCompatSetActionSender(id self, SEL cmd, id sender) {
-    (void)cmd;
-    objc_setAssociatedObject(self, kLGCompatActionSenderKey, sender, OBJC_ASSOCIATION_ASSIGN);
-}
 static NSInteger LGCompatActionState(id self, SEL cmd) {
     (void)cmd; return [objc_getAssociatedObject(self, kLGCompatActionStateKey) integerValue];
 }
