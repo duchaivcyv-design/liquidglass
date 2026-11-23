@@ -8,6 +8,7 @@
 #import "../Shared/LGSharedSupport.h"
 #import <Preferences/PSSpecifier.h>
 #import <QuartzCore/QuartzCore.h>
+#import <objc/message.h>
 #import <math.h>
 #import <objc/runtime.h>
 #import <notify.h>
@@ -22,6 +23,75 @@ static void *kLGControlledByEnabledDefaultsKey =
 static void *kLGScrollTopGlassViewKey = &kLGScrollTopGlassViewKey;
 static const CGFloat kLGGoToTopCornerRadiusRatio = 0.5;
 
+static UIColor *LGPCompatLabelColor(void) {
+    if (@available(iOS 13.0, *)) {
+        return [UIColor labelColor];
+    }
+    return [UIColor blackColor];
+}
+
+static UIColor *LGPCompatSecondaryLabelColor(void) {
+    if (@available(iOS 13.0, *)) {
+        return [UIColor secondaryLabelColor];
+    }
+    return [UIColor colorWithWhite:0.42 alpha:1.0];
+}
+
+static UIColor *LGPCompatTertiaryLabelColor(void) {
+    if (@available(iOS 13.0, *)) {
+        return [UIColor tertiaryLabelColor];
+    }
+    return [UIColor colorWithWhite:0.58 alpha:1.0];
+}
+
+static UIColor *LGPCompatSystemGroupedBackgroundColor(void) {
+    if (@available(iOS 13.0, *)) {
+        return [UIColor systemGroupedBackgroundColor];
+    }
+    return [UIColor groupTableViewBackgroundColor];
+}
+
+static void LGPApplyContinuousCornerCurve(CALayer *layer) {
+    if (!layer) return;
+    if (@available(iOS 13.0, *)) {
+        layer.cornerCurve = kCACornerCurveContinuous;
+    }
+}
+
+static CGFloat LGPScrollViewTopInset(UIScrollView *scrollView) {
+    if (!scrollView) return 0.0;
+    if (@available(iOS 11.0, *)) {
+        return scrollView.adjustedContentInset.top;
+    }
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    return scrollView.contentInset.top;
+    #pragma clang diagnostic pop
+}
+
+static UIImage *LGPCompatSymbolImage(NSString *symbolName, CGFloat pointSize, UIFontWeight weight, NSString *fallbackTitle) {
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *config =
+            [UIImageSymbolConfiguration configurationWithPointSize:pointSize weight:weight];
+        UIImage *img = [UIImage systemImageNamed:symbolName withConfiguration:config];
+        if (img) return img;
+    }
+    if (!fallbackTitle.length) return nil;
+    UIFont *font = [UIFont systemFontOfSize:pointSize weight:weight];
+    NSDictionary *attrs = @{
+        NSFontAttributeName: font,
+        NSForegroundColorAttributeName: [UIColor whiteColor]
+    };
+    CGSize size = [fallbackTitle sizeWithAttributes:attrs];
+    CGFloat side = MAX(18.0, ceil(MAX(size.width, size.height) + 4.0));
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, 0.0);
+    [fallbackTitle drawAtPoint:CGPointMake((side - size.width) * 0.5, (side - size.height) * 0.5)
+              withAttributes:attrs];
+    UIImage *rendered = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return [rendered imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+}
+
 static CGFloat LGGoToTopCornerRadiusForView(UIView *view) {
     return MIN(CGRectGetWidth(view.bounds), CGRectGetHeight(view.bounds)) * kLGGoToTopCornerRadiusRatio;
 }
@@ -35,7 +105,7 @@ static CGFloat LGGoToTopCornerRadiusForView(UIView *view) {
     [super layoutSubviews];
     CGFloat radius = LGGoToTopCornerRadiusForView(self);
     self.layer.cornerRadius = radius;
-    self.layer.cornerCurve = kCACornerCurveContinuous;
+    LGPApplyContinuousCornerCurve(self.layer);
     self.layer.masksToBounds = YES;
 
     LGLiveBackdropView *glass = objc_getAssociatedObject(self, kLGScrollTopGlassViewKey);
@@ -115,7 +185,7 @@ static CGFloat LGGoToTopCornerRadiusForView(UIView *view) {
             BOOL previousVisible = NO;
             BOOL nextVisible = NO;
             for (NSInteger left = (NSInteger)i - 1; left >= 0; left--) {
-                UIView *candidate = arrangedSubviews[(NSUInteger)left];
+                UIView *candidate = arrangedSubviews[(NSInteger)left];
                 if (objc_getAssociatedObject(candidate, kLGPanelItemKey) != nil) {
                     previousVisible = !candidate.hidden;
                     break;
@@ -162,7 +232,7 @@ static CGFloat LGGoToTopCornerRadiusForView(UIView *view) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = [UIColor systemGroupedBackgroundColor];
+    self.view.backgroundColor = LGPCompatSystemGroupedBackgroundColor();
     [self configureCustomBackButton];
     self.navigationItem.rightBarButtonItem = LGMakeCircularMenuItem(self, @selector(handleApplyPressed),
                                                                       @selector(handleResetPressed),
@@ -375,8 +445,6 @@ static void LGRestartAssistiveTouchDaemon(void) {
 }
 
 - (void)importPreferences {
-    /* The iOS 12 document picker API uses UTI strings; UniformTypeIdentifiers
-     * and initForOpeningContentTypes: do not exist until iOS 14. */
     UIDocumentPickerViewController *picker =
         [[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"public.json"]
                                                               inMode:UIDocumentPickerModeImport];
@@ -530,15 +598,16 @@ static void LGRestartAssistiveTouchDaemon(void) {
     [container addSubview:glassView];
     objc_setAssociatedObject(container, kLGScrollTopGlassViewKey, glassView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
-    UIImageSymbolConfiguration *config =
-        [UIImageSymbolConfiguration configurationWithPointSize:14.0 weight:UIImageSymbolWeightSemibold];
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
     [button setTitle:LGLocalized(@"prefs.button.go_to_top") forState:UIControlStateNormal];
-    [button setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
+    [button setTitleColor:LGPCompatLabelColor() forState:UIControlStateNormal];
     button.titleLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
-    [button setImage:[UIImage systemImageNamed:@"chevron.up" withConfiguration:config] forState:UIControlStateNormal];
-    button.tintColor = [UIColor labelColor];
+    UIImage *upIcon = LGPCompatSymbolImage(@"chevron.up", 14.0, UIFontWeightSemibold, @"^");
+    if (upIcon) {
+        [button setImage:upIcon forState:UIControlStateNormal];
+    }
+    button.tintColor = LGPCompatLabelColor();
     button.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
     #pragma clang diagnostic push
     #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -578,7 +647,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
     UIView *targetSection = _orderedSectionViews.count > 1 ? _orderedSectionViews[1] : _orderedSectionViews.firstObject;
     if (targetSection) {
         CGRect targetRect = [_contentStack convertRect:targetSection.frame toView:_scrollView];
-        CGFloat topInset = _scrollView.adjustedContentInset.top;
+        CGFloat topInset = LGPScrollViewTopInset(_scrollView);
         return MAX(120.0, CGRectGetMinY(targetRect) - topInset - 24.0);
     }
     return 220.0;
@@ -641,7 +710,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
 }
 
 - (void)handleScrollTopPressed {
-    CGFloat topInset = _scrollView.adjustedContentInset.top;
+    CGFloat topInset = LGPScrollViewTopInset(_scrollView);
     [_scrollView setContentOffset:CGPointMake(0.0, -topInset) animated:YES];
 }
 
@@ -817,7 +886,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
         subtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
         subtitleLabel.text = _screenSubtitle;
         subtitleLabel.numberOfLines = 0;
-        subtitleLabel.textColor = [UIColor secondaryLabelColor];
+        subtitleLabel.textColor = LGPCompatSecondaryLabelColor();
         subtitleLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     }
@@ -893,7 +962,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.text = LGLocalized(@"prefs.jump_to.title");
     titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    titleLabel.textColor = [UIColor secondaryLabelColor];
+    titleLabel.textColor = LGPCompatSecondaryLabelColor();
 
     _jumpScrollView = [[UIScrollView alloc] initWithFrame:CGRectZero];
     _jumpScrollView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -919,13 +988,17 @@ static void LGRestartAssistiveTouchDaemon(void) {
         [_jumpScrollView.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
         [_jumpScrollView.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
         [_jumpScrollView.heightAnchor constraintEqualToConstant:38.0],
-        [_jumpStack.topAnchor constraintEqualToAnchor:_jumpScrollView.contentLayoutGuide.topAnchor],
-        [_jumpStack.leadingAnchor constraintEqualToAnchor:_jumpScrollView.contentLayoutGuide.leadingAnchor],
-        [_jumpStack.trailingAnchor constraintEqualToAnchor:_jumpScrollView.contentLayoutGuide.trailingAnchor],
-        [_jumpStack.bottomAnchor constraintEqualToAnchor:_jumpScrollView.contentLayoutGuide.bottomAnchor],
-        [_jumpStack.heightAnchor constraintEqualToAnchor:_jumpScrollView.frameLayoutGuide.heightAnchor],
+        [_jumpStack.topAnchor constraintEqualToAnchor:_jumpScrollView.topAnchor],
+        [_jumpStack.leadingAnchor constraintEqualToAnchor:_jumpScrollView.leadingAnchor],
+        [_jumpStack.trailingAnchor constraintEqualToAnchor:_jumpScrollView.trailingAnchor],
+        [_jumpStack.bottomAnchor constraintEqualToAnchor:_jumpScrollView.bottomAnchor],
+        [_jumpStack.heightAnchor constraintEqualToAnchor:_jumpScrollView.heightAnchor],
     ]];
 
+    BOOL isDark = NO;
+    if (@available(iOS 12.0, *)) {
+        isDark = (self.traitCollection.userInterfaceStyle == 2); // UIUserInterfaceStyleDark
+    }
     for (NSDictionary *section in sections) {
         NSString *title = section[@"title"];
         UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -933,9 +1006,9 @@ static void LGRestartAssistiveTouchDaemon(void) {
         [button setTitle:title forState:UIControlStateNormal];
         [button setTitleColor:_accentColor forState:UIControlStateNormal];
         button.titleLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
-        button.backgroundColor = [_accentColor colorWithAlphaComponent:(self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.16 : 0.10)];
+        button.backgroundColor = [_accentColor colorWithAlphaComponent:(isDark ? 0.16 : 0.10)];
         button.layer.cornerRadius = 19.0;
-        button.layer.cornerCurve = kCACornerCurveContinuous;
+        LGPApplyContinuousCornerCurve(button.layer);
         #pragma clang diagnostic push
         #pragma clang diagnostic ignored "-Wdeprecated-declarations"
         button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 14.0, 0.0, 14.0);
@@ -971,7 +1044,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
     UIView *sectionView = _sectionViews[title];
     if (!sectionView || !_scrollView) return;
     CGRect targetRect = [_contentStack convertRect:sectionView.frame toView:_scrollView];
-    CGFloat topInset = _scrollView.adjustedContentInset.top;
+    CGFloat topInset = LGPScrollViewTopInset(_scrollView);
     CGFloat targetY = MAX(-topInset, CGRectGetMinY(targetRect) - 12.0);
     [_scrollView setContentOffset:CGPointMake(0.0, targetY) animated:YES];
 }
@@ -1040,7 +1113,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
         UILabel *sectionSubtitle = [[UILabel alloc] initWithFrame:CGRectZero];
         sectionSubtitle.text = sectionSubtitleText;
         sectionSubtitle.numberOfLines = 0;
-        sectionSubtitle.textColor = [UIColor secondaryLabelColor];
+        sectionSubtitle.textColor = LGPCompatSecondaryLabelColor();
         sectionSubtitle.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
         [sectionStack addArrangedSubview:sectionSubtitle];
     }
@@ -1065,7 +1138,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
     UILabel *subtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     subtitleLabel.text = text;
     subtitleLabel.numberOfLines = 0;
-    subtitleLabel.textColor = [UIColor secondaryLabelColor];
+    subtitleLabel.textColor = LGPCompatSecondaryLabelColor();
     subtitleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular];
     return subtitleLabel;
 }
@@ -1104,68 +1177,72 @@ static void LGRestartAssistiveTouchDaemon(void) {
     return headerRow;
 }
 
+- (void)handleToggleValueChanged:(UISwitch *)sender {
+    NSDictionary *item = objc_getAssociatedObject(sender, kLGPanelItemKey);
+    if (!item) return;
+    if ([item[@"key"] isEqualToString:@"AppIcons.Enabled"] && sender.isOn) {
+        __weak UISwitch *weakSender = sender;
+        UIAlertController *alert = [UIAlertController
+            alertControllerWithTitle:LGLocalized(@"prefs.app_icons_warning.title")
+                             message:LGLocalized(@"prefs.app_icons_warning.body")
+                      preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction
+            actionWithTitle:LGLocalized(@"prefs.button.cancel")
+                      style:UIAlertActionStyleCancel
+                    handler:^(__unused UIAlertAction *alertAction) {
+                        [weakSender setOn:NO animated:YES];
+                    }]];
+        [alert addAction:[UIAlertAction
+            actionWithTitle:LGLocalized(@"prefs.app_icons_warning.confirm")
+                      style:UIAlertActionStyleDefault
+                    handler:^(__unused UIAlertAction *alertAction) {
+                        UISwitch *confirmedSender = weakSender;
+                        if (!confirmedSender) return;
+                        [confirmedSender setOn:YES animated:YES];
+                        LGWritePreferenceAndMaybeRequireRespring(item[@"key"], @YES);
+                        [self handleRespringStateChanged:nil];
+                        if ([item[@"controls_following_panel"] boolValue]) {
+                            [self updatePanelsControlledByEnabledKey:item[@"key"]
+                                                             enabled:YES
+                                                            animated:YES];
+                        }
+                    }]];
+        [self presentViewController:alert animated:YES completion:nil];
+        return;
+    }
+    if ([item[@"key"] isEqualToString:@"SettingsControls.Enabled"]) {
+        LGWritePreference(item[@"key"], @(sender.isOn));
+        LGPresentReopenSettingsConfirmation(self);
+    } else if ([item[@"key"] hasPrefix:@"Preferences."]) {
+        LGWritePreference(item[@"key"], @(sender.isOn));
+        [self configureCustomBackButton];
+        [self updateScrollTopButtonAnimated:YES];
+        [self refreshScrollTopButtonBackdrop];
+        LGRefreshRespringBarGlass(_respringBar);
+    } else if ([item[@"key"] hasPrefix:@"Specular.Motion."] || [item[@"key"] hasSuffix:@".SpecularEnabled"]) {
+        LGWritePreference(item[@"key"], @(sender.isOn));
+        CFPreferencesSetAppValue((__bridge CFStringRef)item[@"key"],
+                                 (__bridge CFPropertyListRef)@(sender.isOn),
+                                 (__bridge CFStringRef)LGPrefsDomain);
+        CFPreferencesAppSynchronize((__bridge CFStringRef)LGPrefsDomain);
+        notify_post(LGPrefsChangedNotificationCString);
+    } else {
+        LGWritePreferenceAndMaybeRequireRespring(item[@"key"], @(sender.isOn));
+        [self handleRespringStateChanged:nil];
+    }
+    if ([item[@"controls_following_panel"] boolValue]) {
+        [self updatePanelsControlledByEnabledKey:item[@"key"] enabled:sender.isOn animated:YES];
+    }
+}
+
 - (UISwitch *)configuredToggleForItem:(NSDictionary *)item {
     UISwitch *toggle = [[LGPrefsSwitchClass() alloc] initWithFrame:CGRectZero];
     toggle.onTintColor = UIColor.systemGreenColor;
     toggle.on = [LGReadPreference(item[@"key"], item[@"default"]) boolValue];
     objc_setAssociatedObject(toggle, kLGDefaultValueKey, item[@"default"], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     objc_setAssociatedObject(toggle, kLGPreferenceKeyKey, item[@"key"], OBJC_ASSOCIATION_COPY_NONATOMIC);
-    [toggle addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
-        UISwitch *sender = (UISwitch *)action.sender;
-        if ([item[@"key"] isEqualToString:@"AppIcons.Enabled"] && sender.isOn) {
-            __weak UISwitch *weakSender = sender;
-            UIAlertController *alert = [UIAlertController
-                alertControllerWithTitle:LGLocalized(@"prefs.app_icons_warning.title")
-                                 message:LGLocalized(@"prefs.app_icons_warning.body")
-                          preferredStyle:UIAlertControllerStyleAlert];
-            [alert addAction:[UIAlertAction
-                actionWithTitle:LGLocalized(@"prefs.button.cancel")
-                          style:UIAlertActionStyleCancel
-                        handler:^(__unused UIAlertAction *alertAction) {
-                            [weakSender setOn:NO animated:YES];
-                        }]];
-            [alert addAction:[UIAlertAction
-                actionWithTitle:LGLocalized(@"prefs.app_icons_warning.confirm")
-                          style:UIAlertActionStyleDefault
-                        handler:^(__unused UIAlertAction *alertAction) {
-                            UISwitch *confirmedSender = weakSender;
-                            if (!confirmedSender) return;
-                            [confirmedSender setOn:YES animated:YES];
-                            LGWritePreferenceAndMaybeRequireRespring(item[@"key"], @YES);
-                            [self handleRespringStateChanged:nil];
-                            if ([item[@"controls_following_panel"] boolValue]) {
-                                [self updatePanelsControlledByEnabledKey:item[@"key"]
-                                                                 enabled:YES
-                                                                animated:YES];
-                            }
-                        }]];
-            [self presentViewController:alert animated:YES completion:nil];
-            return;
-        }
-        if ([item[@"key"] isEqualToString:@"SettingsControls.Enabled"]) {
-            LGWritePreference(item[@"key"], @(sender.isOn));
-            LGPresentReopenSettingsConfirmation(self);
-        } else if ([item[@"key"] hasPrefix:@"Preferences."]) {
-            LGWritePreference(item[@"key"], @(sender.isOn));
-            [self configureCustomBackButton];
-            [self updateScrollTopButtonAnimated:YES];
-            [self refreshScrollTopButtonBackdrop];
-            LGRefreshRespringBarGlass(_respringBar);
-        } else if ([item[@"key"] hasPrefix:@"Specular.Motion."] || [item[@"key"] hasSuffix:@".SpecularEnabled"]) {
-            LGWritePreference(item[@"key"], @(sender.isOn));
-            CFPreferencesSetAppValue((__bridge CFStringRef)item[@"key"],
-                                     (__bridge CFPropertyListRef)@(sender.isOn),
-                                     (__bridge CFStringRef)LGPrefsDomain);
-            CFPreferencesAppSynchronize((__bridge CFStringRef)LGPrefsDomain);
-            notify_post(LGPrefsChangedNotificationCString);
-        } else {
-            LGWritePreferenceAndMaybeRequireRespring(item[@"key"], @(sender.isOn));
-            [self handleRespringStateChanged:nil];
-        }
-        if ([item[@"controls_following_panel"] boolValue]) {
-            [self updatePanelsControlledByEnabledKey:item[@"key"] enabled:sender.isOn animated:YES];
-        }
-    }] forControlEvents:UIControlEventValueChanged];
+    objc_setAssociatedObject(toggle, kLGPanelItemKey, item, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [toggle addTarget:self action:@selector(handleToggleValueChanged:) forControlEvents:UIControlEventValueChanged];
     objc_setAssociatedObject(toggle, kLGControlledByEnabledKey, item[@"controls_following_panel"], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     return toggle;
 }
@@ -1176,10 +1253,13 @@ static void LGRestartAssistiveTouchDaemon(void) {
                              maxValue:(CGFloat)maxValue
                              decimals:(NSInteger)decimals {
     UIButton *infoButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    UIImageSymbolConfiguration *infoConfig =
-        [UIImageSymbolConfiguration configurationWithPointSize:14.0 weight:UIImageSymbolWeightSemibold];
-    [infoButton setImage:[UIImage systemImageNamed:@"info.circle" withConfiguration:infoConfig] forState:UIControlStateNormal];
-    [infoButton setTintColor:[UIColor tertiaryLabelColor]];
+    UIImage *infoIcon = LGPCompatSymbolImage(@"info.circle", 14.0, UIFontWeightSemibold, @"i");
+    if (infoIcon) {
+        [infoButton setImage:infoIcon forState:UIControlStateNormal];
+    } else {
+        [infoButton setTitle:@"i" forState:UIControlStateNormal];
+    }
+    [infoButton setTintColor:LGPCompatTertiaryLabelColor()];
     objc_setAssociatedObject(infoButton, kLGControlTitleKey, item[@"title"], OBJC_ASSOCIATION_COPY_NONATOMIC);
     objc_setAssociatedObject(infoButton, kLGControlSubtitleKey, subtitle, OBJC_ASSOCIATION_COPY_NONATOMIC);
     objc_setAssociatedObject(infoButton, kLGMinValueKey, @(minValue), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -1245,50 +1325,102 @@ static void LGRestartAssistiveTouchDaemon(void) {
     return @"";
 }
 
-- (UIMenu *)menuForItem:(NSDictionary *)item
-           currentValue:(NSString *)currentValue
-             menuButton:(UIButton *)menuButton
-            titleUpdate:(void (^)(NSString *newTitle))applyMenuSelectionTitle {
-    __weak typeof(self) weakSelf = self;
-    __weak UIButton *weakMenuButton = menuButton;
-    __block NSString *selectedValue = [currentValue copy];
-    NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
-    for (NSDictionary *choice in item[@"choices"]) {
+- (void)handleLegacyMenuButtonPressed:(UIButton *)sender {
+    NSDictionary *item = objc_getAssociatedObject(sender, kLGPanelItemKey);
+    NSArray<NSDictionary *> *choices = item[@"choices"];
+    if (![choices isKindOfClass:NSArray.class] || !choices.count) return;
+
+    NSString *key = item[@"key"];
+    NSString *currentValue = [key isEqualToString:kLGPrefsLanguageKey]
+        ? LGCurrentPrefsLanguageCode()
+        : [[LGReadPreferenceObject(key, item[@"default"]) description] copy];
+
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:item[@"title"]
+                                                                  message:item[@"subtitle"]
+                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    for (NSDictionary *choice in choices) {
         NSString *value = choice[@"value"];
         NSString *title = choice[@"title"];
         if (!value.length || !title.length) continue;
-        UIAction *action = [UIAction actionWithTitle:title
-                                               image:nil
-                                          identifier:nil
-                                             handler:^(__kindof UIAction * _Nonnull actionObj) {
-            (void)actionObj;
-            if ([item[@"key"] isEqualToString:kLGPrefsLanguageKey]) {
+        BOOL isSelected = [value isEqualToString:currentValue];
+        NSString *displayTitle = isSelected ? [NSString stringWithFormat:@"✓ %@", title] : title;
+        [sheet addAction:[UIAlertAction actionWithTitle:displayTitle
+                                                  style:UIAlertActionStyleDefault
+                                                handler:^(__unused UIAlertAction *act) {
+            if ([key isEqualToString:kLGPrefsLanguageKey]) {
                 LGSetCurrentPrefsLanguageCode(value);
-                selectedValue = [LGCurrentPrefsLanguageCode() copy];
             } else {
-                LGWritePreferenceObject(item[@"key"], value);
-                selectedValue = [value copy];
+                LGWritePreferenceObject(key, value);
             }
-            applyMenuSelectionTitle(title);
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            UIButton *strongMenuButton = weakMenuButton;
-            if (strongSelf && strongMenuButton) {
-                strongMenuButton.menu = [strongSelf menuForItem:item
-                                                   currentValue:selectedValue
-                                                     menuButton:strongMenuButton
-                                                    titleUpdate:applyMenuSelectionTitle];
-                if ([item[@"reload_on_change"] boolValue]) {
-                    [strongSelf updateVisibleValueControlledItemsAnimated:YES];
-                }
-                [strongSelf updateRespringBarAnimated:YES];
+            [sender setTitle:title forState:UIControlStateNormal];
+            if ([item[@"reload_on_change"] boolValue]) {
+                [self updateVisibleValueControlledItemsAnimated:YES];
             }
-        }];
-        if ([action respondsToSelector:@selector(setState:)]) {
-            action.state = [value isEqualToString:selectedValue] ? UIMenuElementStateOn : UIMenuElementStateOff;
-        }
-        [actions addObject:action];
+            [self updateRespringBarAnimated:YES];
+        }]];
     }
-    return [UIMenu menuWithTitle:@"" children:actions];
+    [sheet addAction:[UIAlertAction actionWithTitle:LGLocalized(@"prefs.button.cancel")
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+    if (sheet.popoverPresentationController) {
+        sheet.popoverPresentationController.sourceView = sender;
+        sheet.popoverPresentationController.sourceRect = sender.bounds;
+    }
+    [self presentViewController:sheet animated:YES completion:nil];
+}
+
+- (id)menuForItem:(NSDictionary *)item
+     currentValue:(NSString *)currentValue
+       menuButton:(UIButton *)menuButton
+      titleUpdate:(void (^)(NSString *newTitle))applyMenuSelectionTitle {
+    if (@available(iOS 14.0, *)) {
+        __weak typeof(self) weakSelf = self;
+        __weak UIButton *weakMenuButton = menuButton;
+        __block NSString *selectedValue = [currentValue copy];
+        NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
+        for (NSDictionary *choice in item[@"choices"]) {
+            NSString *value = choice[@"value"];
+            NSString *title = choice[@"title"];
+            if (!value.length || !title.length) continue;
+            UIAction *action = [UIAction actionWithTitle:title
+                                                   image:nil
+                                              identifier:nil
+                                                 handler:^(__kindof UIAction * _Nonnull actionObj) {
+                (void)actionObj;
+                if ([item[@"key"] isEqualToString:kLGPrefsLanguageKey]) {
+                    LGSetCurrentPrefsLanguageCode(value);
+                    selectedValue = [LGCurrentPrefsLanguageCode() copy];
+                } else {
+                    LGWritePreferenceObject(item[@"key"], value);
+                    selectedValue = [value copy];
+                }
+                applyMenuSelectionTitle(title);
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                UIButton *strongMenuButton = weakMenuButton;
+                if (strongSelf && strongMenuButton) {
+                    id updatedMenu = [strongSelf menuForItem:item
+                                                currentValue:selectedValue
+                                                  menuButton:strongMenuButton
+                                                 titleUpdate:applyMenuSelectionTitle];
+                    if ([strongMenuButton respondsToSelector:@selector(setMenu:)]) {
+                        ((void (*)(id, SEL, id))objc_msgSend)(strongMenuButton, @selector(setMenu:), updatedMenu);
+                    }
+                    if ([item[@"reload_on_change"] boolValue]) {
+                        [strongSelf updateVisibleValueControlledItemsAnimated:YES];
+                    }
+                    [strongSelf updateRespringBarAnimated:YES];
+                }
+            }];
+            if (@available(iOS 13.0, *)) {
+                if ([action respondsToSelector:@selector(setState:)]) {
+                    action.state = [value isEqualToString:selectedValue] ? UIMenuElementStateOn : UIMenuElementStateOff;
+                }
+            }
+            [actions addObject:action];
+        }
+        return [UIMenu menuWithTitle:@"" children:actions];
+    }
+    return nil;
 }
 
 - (UIView *)menuControlBodyForItem:(NSDictionary *)item titleLabel:(UILabel *)titleLabel {
@@ -1301,7 +1433,6 @@ static void LGRestartAssistiveTouchDaemon(void) {
 
     UIButton *menuButton = [UIButton buttonWithType:UIButtonTypeSystem];
     menuButton.translatesAutoresizingMaskIntoConstraints = NO;
-    menuButton.showsMenuAsPrimaryAction = YES;
     menuButton.tintColor = _accentColor;
     menuButton.titleLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
     #pragma clang diagnostic push
@@ -1313,13 +1444,15 @@ static void LGRestartAssistiveTouchDaemon(void) {
     menuButton.layer.cornerRadius = 0.0;
 
     NSString *selectedTitle = [self menuSelectionTitleForItem:item];
-    __block NSString *currentValue = [item[@"key"] isEqualToString:kLGPrefsLanguageKey]
+    NSString *currentValue = [item[@"key"] isEqualToString:kLGPrefsLanguageKey]
         ? LGCurrentPrefsLanguageCode()
         : [[LGReadPreferenceObject(item[@"key"], item[@"default"]) description] copy];
+    UIImage *downIcon = LGPCompatSymbolImage(@"chevron.down", 13.0, UIFontWeightSemibold, @"v");
+
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
         config.title = selectedTitle;
-        config.image = [UIImage systemImageNamed:@"chevron.down"];
+        config.image = downIcon;
         config.imagePlacement = NSDirectionalRectEdgeTrailing;
         config.imagePadding = 6.0;
         config.baseForegroundColor = _accentColor;
@@ -1328,8 +1461,10 @@ static void LGRestartAssistiveTouchDaemon(void) {
         menuButton.configuration = config;
     } else {
         [menuButton setTitle:selectedTitle forState:UIControlStateNormal];
-        [menuButton setImage:[UIImage systemImageNamed:@"chevron.down"] forState:UIControlStateNormal];
-        menuButton.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
+        if (downIcon) {
+            [menuButton setImage:downIcon forState:UIControlStateNormal];
+            menuButton.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
+        }
     }
 
     __weak typeof(self) weakSelf = self;
@@ -1342,7 +1477,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
         if (@available(iOS 15.0, *)) {
             UIButtonConfiguration *updatedConfig = strongMenuButton.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
             updatedConfig.title = newTitle;
-            updatedConfig.image = [UIImage systemImageNamed:@"chevron.down"];
+            updatedConfig.image = LGPCompatSymbolImage(@"chevron.down", 13.0, UIFontWeightSemibold, @"v");
             updatedConfig.imagePlacement = NSDirectionalRectEdgeTrailing;
             updatedConfig.imagePadding = 6.0;
             updatedConfig.baseForegroundColor = strongSelf->_accentColor;
@@ -1354,10 +1489,21 @@ static void LGRestartAssistiveTouchDaemon(void) {
         }
     };
 
-    menuButton.menu = [self menuForItem:item
-                           currentValue:currentValue
-                             menuButton:menuButton
-                            titleUpdate:applyMenuSelectionTitle];
+    if (@available(iOS 14.0, *)) {
+        if ([menuButton respondsToSelector:@selector(setShowsMenuAsPrimaryAction:)]) {
+            ((void (*)(id, SEL, BOOL))objc_msgSend)(menuButton, @selector(setShowsMenuAsPrimaryAction:), YES);
+        }
+        id builtMenu = [self menuForItem:item
+                            currentValue:currentValue
+                              menuButton:menuButton
+                             titleUpdate:applyMenuSelectionTitle];
+        if (builtMenu && [menuButton respondsToSelector:@selector(setMenu:)]) {
+            ((void (*)(id, SEL, id))objc_msgSend)(menuButton, @selector(setMenu:), builtMenu);
+        }
+    } else {
+        objc_setAssociatedObject(menuButton, kLGPanelItemKey, item, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [menuButton addTarget:self action:@selector(handleLegacyMenuButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
+    }
 
     UIView *headerRow = [self controlHeaderRowWithTitleLabel:titleLabel
                                               accessoryViews:@[menuButton]
@@ -1398,6 +1544,32 @@ static void LGRestartAssistiveTouchDaemon(void) {
     return body;
 }
 
+- (void)handleSliderValueChanged:(UISlider *)sender {
+    UILabel *valueLabel = objc_getAssociatedObject(sender, kLGValueLabelKey);
+    NSNumber *decimalsNumber = objc_getAssociatedObject(sender, kLGDecimalsKey);
+    NSInteger decimals = decimalsNumber ? [decimalsNumber integerValue] : 0;
+    valueLabel.text = LGFormatSliderValue(sender.value, decimals);
+}
+
+- (void)handleSliderCommit:(UISlider *)sender {
+    UILabel *valueLabel = objc_getAssociatedObject(sender, kLGValueLabelKey);
+    NSNumber *decimalsNumber = objc_getAssociatedObject(sender, kLGDecimalsKey);
+    NSString *preferenceKey = objc_getAssociatedObject(sender, kLGPreferenceKeyKey);
+    NSInteger decimals = decimalsNumber ? [decimalsNumber integerValue] : 0;
+    CGFloat value = sender.value;
+    valueLabel.text = LGFormatSliderValue(value, decimals);
+    if (preferenceKey.length) {
+        LGWritePreference(preferenceKey, @(value));
+        if ([preferenceKey hasPrefix:@"Specular.Motion."] || [preferenceKey hasSuffix:@".SpecularOpacity"]) {
+            CFPreferencesSetAppValue((__bridge CFStringRef)preferenceKey,
+                                     (__bridge CFPropertyListRef)@(value),
+                                     (__bridge CFStringRef)LGPrefsDomain);
+            CFPreferencesAppSynchronize((__bridge CFStringRef)LGPrefsDomain);
+            notify_post(LGPrefsChangedNotificationCString);
+        }
+    }
+}
+
 - (UIView *)sliderControlBodyForItem:(NSDictionary *)item titleLabel:(UILabel *)titleLabel {
     UIView *body = [[UIView alloc] initWithFrame:CGRectZero];
     UIStackView *stack = [[UIStackView alloc] initWithFrame:CGRectZero];
@@ -1417,6 +1589,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
     slider.maximumValue = maxValue;
     slider.value = [stored doubleValue];
     slider.minimumTrackTintColor = _accentColor;
+    objc_setAssociatedObject(slider, kLGPreferenceKeyKey, item[@"key"], OBJC_ASSOCIATION_COPY_NONATOMIC);
 
     UILabel *valueLabel = [self sliderValueLabelForStoredValue:stored
                                                       decimals:decimals
@@ -1434,25 +1607,9 @@ static void LGRestartAssistiveTouchDaemon(void) {
                                               accessoryViews:@[valueLabel, infoButton]
                                                      spacing:8.0];
 
-    NSString *preferenceKey = item[@"key"];
-    [slider addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
-        UISlider *sender = (UISlider *)action.sender;
-        valueLabel.text = LGFormatSliderValue(sender.value, decimals);
-    }] forControlEvents:UIControlEventValueChanged];
+    [slider addTarget:self action:@selector(handleSliderValueChanged:) forControlEvents:UIControlEventValueChanged];
     UIControlEvents commitEvents = UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel;
-    [slider addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
-        UISlider *sender = (UISlider *)action.sender;
-        CGFloat value = sender.value;
-        valueLabel.text = LGFormatSliderValue(value, decimals);
-        LGWritePreference(preferenceKey, @(value));
-        if ([preferenceKey hasPrefix:@"Specular.Motion."] || [preferenceKey hasSuffix:@".SpecularOpacity"]) {
-            CFPreferencesSetAppValue((__bridge CFStringRef)preferenceKey,
-                                     (__bridge CFPropertyListRef)@(value),
-                                     (__bridge CFStringRef)LGPrefsDomain);
-            CFPreferencesAppSynchronize((__bridge CFStringRef)LGPrefsDomain);
-            notify_post(LGPrefsChangedNotificationCString);
-        }
-    }] forControlEvents:commitEvents];
+    [slider addTarget:self action:@selector(handleSliderCommit:) forControlEvents:commitEvents];
 
     [stack addArrangedSubview:headerRow];
     [stack addArrangedSubview:slider];
@@ -1463,6 +1620,52 @@ static void LGRestartAssistiveTouchDaemon(void) {
         [stack.bottomAnchor constraintEqualToAnchor:body.bottomAnchor constant:-13.0],
     ]];
     return body;
+}
+
+- (void)handleColorWellChanged:(UIControl *)sender {
+    NSString *key = objc_getAssociatedObject(sender, kLGPreferenceKeyKey);
+    if (!key.length) return;
+    UIColor *selected = nil;
+    if ([sender respondsToSelector:@selector(selectedColor)]) {
+        selected = ((UIColor *(*)(id, SEL))objc_msgSend)(sender, @selector(selectedColor));
+    }
+    if (selected) {
+        LGWritePreferenceObject(key, LGRGBAHexFromColor(selected));
+    }
+}
+
+- (void)handleLegacyColorSwatchPressed:(UIButton *)sender {
+    NSString *key = objc_getAssociatedObject(sender, kLGPreferenceKeyKey);
+    NSString *fallback = objc_getAssociatedObject(sender, kLGDefaultValueKey) ?: @"#FFFFFF00";
+    if (!key.length) return;
+    NSArray<NSDictionary *> *presets = @[
+        @{ @"name": @"Clear", @"hex": @"#00000000" },
+        @{ @"name": @"White", @"hex": @"#FFFFFFFF" },
+        @{ @"name": @"Black", @"hex": @"#000000FF" },
+        @{ @"name": @"Blue", @"hex": @"#007AFFFF" },
+        @{ @"name": @"Red", @"hex": @"#FF3B30FF" },
+        @{ @"name": @"Green", @"hex": @"#34C759FF" },
+    ];
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:LGLocalized(@"prefs.info.title")
+                                                                  message:fallback
+                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    for (NSDictionary *p in presets) {
+        [sheet addAction:[UIAlertAction actionWithTitle:p[@"name"]
+                                                  style:UIAlertActionStyleDefault
+                                                handler:^(__unused UIAlertAction *act) {
+            NSString *hex = p[@"hex"];
+            LGWritePreferenceObject(key, hex);
+            sender.backgroundColor = LGColorFromRGBAHex(hex);
+        }]];
+    }
+    [sheet addAction:[UIAlertAction actionWithTitle:LGLocalized(@"prefs.button.cancel")
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+    if (sheet.popoverPresentationController) {
+        sheet.popoverPresentationController.sourceView = sender;
+        sheet.popoverPresentationController.sourceRect = sender.bounds;
+    }
+    [self presentViewController:sheet animated:YES completion:nil];
 }
 
 - (UIView *)colorControlBodyForItem:(NSDictionary *)item titleLabel:(UILabel *)titleLabel {
@@ -1476,17 +1679,40 @@ static void LGRestartAssistiveTouchDaemon(void) {
     NSString *key = item[@"key"];
     NSString *fallback = item[@"default"] ?: @"#FFFFFF00";
     id stored = LGReadPreferenceObject(key, fallback);
-    UIColorWell *well = [[UIColorWell alloc] initWithFrame:CGRectZero];
-    well.selectedColor = LGColorFromRGBAHex([stored isKindOfClass:NSString.class] ? stored : fallback);
-    well.supportsAlpha = YES;
-    [well.widthAnchor constraintEqualToConstant:32.0].active = YES;
-    [well.heightAnchor constraintEqualToConstant:32.0].active = YES;
-    [well addAction:[UIAction actionWithHandler:^(__kindof UIAction *action) {
-        UIColorWell *sender = (UIColorWell *)action.sender;
-        LGWritePreferenceObject(key, LGRGBAHexFromColor(sender.selectedColor));
-    }] forControlEvents:UIControlEventValueChanged];
+    UIColor *initialColor = LGColorFromRGBAHex([stored isKindOfClass:NSString.class] ? stored : fallback);
+    UIView *accessory = nil;
 
-    [stack addArrangedSubview:[self controlHeaderRowWithTitleLabel:titleLabel accessoryViews:@[well] spacing:12.0]];
+    Class colorWellClass = objc_getClass("UIColorWell");
+    if (@available(iOS 14.0, *)) {
+        if (colorWellClass) {
+            UIControl *well = [[colorWellClass alloc] initWithFrame:CGRectZero];
+            if ([well respondsToSelector:@selector(setSelectedColor:)]) {
+                ((void (*)(id, SEL, id))objc_msgSend)(well, @selector(setSelectedColor:), initialColor);
+            }
+            if ([well respondsToSelector:@selector(setSupportsAlpha:)]) {
+                ((void (*)(id, SEL, BOOL))objc_msgSend)(well, @selector(setSupportsAlpha:), YES);
+            }
+            objc_setAssociatedObject(well, kLGPreferenceKeyKey, key, OBJC_ASSOCIATION_COPY_NONATOMIC);
+            [well addTarget:self action:@selector(handleColorWellChanged:) forControlEvents:UIControlEventValueChanged];
+            accessory = well;
+        }
+    }
+    if (!accessory) {
+        UIButton *swatch = [UIButton buttonWithType:UIButtonTypeCustom];
+        swatch.backgroundColor = initialColor;
+        swatch.layer.cornerRadius = 16.0;
+        swatch.layer.borderWidth = 1.0;
+        swatch.layer.borderColor = LGPCompatTertiaryLabelColor().CGColor;
+        objc_setAssociatedObject(swatch, kLGPreferenceKeyKey, key, OBJC_ASSOCIATION_COPY_NONATOMIC);
+        objc_setAssociatedObject(swatch, kLGDefaultValueKey, fallback, OBJC_ASSOCIATION_COPY_NONATOMIC);
+        [swatch addTarget:self action:@selector(handleLegacyColorSwatchPressed:) forControlEvents:UIControlEventTouchUpInside];
+        accessory = swatch;
+    }
+
+    [accessory.widthAnchor constraintEqualToConstant:32.0].active = YES;
+    [accessory.heightAnchor constraintEqualToConstant:32.0].active = YES;
+
+    [stack addArrangedSubview:[self controlHeaderRowWithTitleLabel:titleLabel accessoryViews:@[accessory] spacing:12.0]];
     [stack addArrangedSubview:[self controlSubtitleLabelWithText:item[@"subtitle"]]];
     [NSLayoutConstraint activateConstraints:@[
         [stack.topAnchor constraintEqualToAnchor:body.topAnchor constant:13.0],
@@ -1495,6 +1721,28 @@ static void LGRestartAssistiveTouchDaemon(void) {
         [stack.bottomAnchor constraintEqualToAnchor:body.bottomAnchor constant:-13.0],
     ]];
     return body;
+}
+
+- (void)handleStringButtonPressed:(UIButton *)sender {
+    NSDictionary *item = objc_getAssociatedObject(sender, kLGPanelItemKey);
+    UILabel *valueLabel = objc_getAssociatedObject(sender, kLGValueLabelKey);
+    NSString *preferenceKey = item[@"key"];
+    NSString *fallback = item[@"default"];
+    NSString *current = valueLabel.text.length ? valueLabel.text : fallback;
+    LGPresentTextInputSheet(self,
+                            item[@"title"],
+                            item[@"subtitle"],
+                            current,
+                            item[@"placeholder"],
+                            UIKeyboardTypeASCIICapable,
+                            YES,
+                            ^(NSString *inputText) {
+        NSString *text = inputText ?: @"";
+        text = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (!text.length) text = fallback ?: @"";
+        valueLabel.text = text;
+        LGWritePreferenceObject(preferenceKey, text);
+    });
 }
 
 - (UIView *)stringControlBodyForItem:(NSDictionary *)item titleLabel:(UILabel *)titleLabel {
@@ -1522,7 +1770,11 @@ static void LGRestartAssistiveTouchDaemon(void) {
 
     UILabel *valueLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     valueLabel.text = stored.length ? stored : fallback;
-    valueLabel.font = [UIFont monospacedSystemFontOfSize:15.0 weight:UIFontWeightSemibold];
+    if (@available(iOS 13.0, *)) {
+        valueLabel.font = [UIFont monospacedSystemFontOfSize:15.0 weight:UIFontWeightSemibold];
+    } else {
+        valueLabel.font = [UIFont boldSystemFontOfSize:15.0];
+    }
     valueLabel.textColor = _accentColor;
     valueLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
     [valueLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
@@ -1530,8 +1782,8 @@ static void LGRestartAssistiveTouchDaemon(void) {
     objc_setAssociatedObject(valueLabel, kLGPreferenceKeyKey, preferenceKey, OBJC_ASSOCIATION_COPY_NONATOMIC);
     objc_setAssociatedObject(valueLabel, kLGDefaultValueKey, fallback, OBJC_ASSOCIATION_COPY_NONATOMIC);
 
-    UIImageView *chevron = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.right"]];
-    chevron.tintColor = [UIColor tertiaryLabelColor];
+    UIImageView *chevron = [[UIImageView alloc] initWithImage:LGPCompatSymbolImage(@"chevron.right", 14.0, UIFontWeightSemibold, @">")];
+    chevron.tintColor = LGPCompatTertiaryLabelColor();
     chevron.contentMode = UIViewContentModeScaleAspectFit;
     [chevron.widthAnchor constraintEqualToConstant:12.0].active = YES;
     [chevron.heightAnchor constraintEqualToConstant:20.0].active = YES;
@@ -1561,27 +1813,9 @@ static void LGRestartAssistiveTouchDaemon(void) {
         [body.bottomAnchor constraintEqualToAnchor:button.bottomAnchor],
     ]];
 
-    __weak typeof(self) weakSelf = self;
-    __weak UILabel *weakValueLabel = valueLabel;
-    [button addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        NSString *current = weakValueLabel.text.length ? weakValueLabel.text : fallback;
-        LGPresentTextInputSheet(strongSelf,
-                                item[@"title"],
-                                item[@"subtitle"],
-                                current,
-                                item[@"placeholder"],
-                                UIKeyboardTypeASCIICapable,
-                                YES,
-                                ^(NSString *inputText) {
-            NSString *text = inputText ?: @"";
-            text = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-            if (!text.length) text = fallback ?: @"";
-            weakValueLabel.text = text;
-            LGWritePreferenceObject(preferenceKey, text);
-        });
-    }] forControlEvents:UIControlEventTouchUpInside];
+    objc_setAssociatedObject(button, kLGPanelItemKey, item, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(button, kLGValueLabelKey, valueLabel, OBJC_ASSOCIATION_ASSIGN);
+    [button addTarget:self action:@selector(handleStringButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
     return button;
 }
 
@@ -1617,8 +1851,8 @@ static void LGRestartAssistiveTouchDaemon(void) {
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     [body addSubview:stack];
 
-    UIImageView *chevron = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.right"]];
-    chevron.tintColor = [UIColor tertiaryLabelColor];
+    UIImageView *chevron = [[UIImageView alloc] initWithImage:LGPCompatSymbolImage(@"chevron.right", 14.0, UIFontWeightSemibold, @">")];
+    chevron.tintColor = LGPCompatTertiaryLabelColor();
     chevron.contentMode = UIViewContentModeScaleAspectFit;
     [chevron.widthAnchor constraintEqualToConstant:12.0].active = YES;
     [chevron.heightAnchor constraintEqualToConstant:20.0].active = YES;
@@ -1686,7 +1920,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
     UIView *card = [[UIView alloc] initWithFrame:CGRectZero];
     card.backgroundColor = LGSubpageCardBackgroundColor();
     card.layer.cornerRadius = 23.25;
-    card.layer.cornerCurve = kCACornerCurveContinuous;
+    LGPApplyContinuousCornerCurve(card.layer);
     card.layer.masksToBounds = YES;
 
     UIStackView *stack = [[UIStackView alloc] initWithFrame:CGRectZero];
