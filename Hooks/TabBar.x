@@ -8,6 +8,7 @@
 #import "../Shared/LGLensRectState.h"
 #import "../Shared/LGLiveBackdropView.h"
 #import "../Shared/LGSharedSupport.h"
+#import "../Shared/LGCompatibility.h"
 
 static const void *kLGTabBarPendingDumpKey = &kLGTabBarPendingDumpKey;
 static const void *kLGTabBarLastSignatureKey = &kLGTabBarLastSignatureKey;
@@ -1727,7 +1728,7 @@ static void LGAppendTabBarViewTree(NSMutableString *output, UIView *view,
         NSStringFromCGRect(windowFrame), view.alpha, view.hidden, view.opaque,
         view.userInteractionEnabled, LGTabBarColorDescription(view.backgroundColor),
         NSStringFromClass(layer.class), layer.cornerRadius,
-        layer.cornerCurve ?: @"nil", layer.masksToBounds, maskClass,
+        LGCompatReadCornerCurve(layer) ?: @"nil", layer.masksToBounds, maskClass,
         (unsigned long)view.subviews.count, (unsigned long)view.constraints.count,
         (unsigned long)view.autoresizingMask];
 
@@ -1762,6 +1763,11 @@ static NSString *LGTabBarSignature(UITabBar *bar) {
     return signature;
 }
 
+static id LGStandardAppearanceForLog(UITabBar *bar) {
+    if (@available(iOS 13.0, *)) return bar.standardAppearance;
+    return nil;
+}
+
 static void LGDumpTabBar(UITabBar *bar, NSString *reason) {
     if (!bar.window) return;
 
@@ -1788,7 +1794,7 @@ static void LGDumpTabBar(UITabBar *bar, NSString *reason) {
         window.screen.scale, NSStringFromCGRect(bar.frame), NSStringFromCGRect(bar.bounds),
         NSStringFromUIEdgeInsets(bar.safeAreaInsets),
         NSStringFromUIEdgeInsets(bar.layoutMargins),
-        NSStringFromCGSize(bar.intrinsicContentSize), bar.standardAppearance,
+        NSStringFromCGSize(bar.intrinsicContentSize), LGStandardAppearanceForLog(bar),
         scrollEdgeAppearance, (unsigned long)bar.items.count, bar.selectedItem];
 
     [bar.items enumerateObjectsUsingBlock:^(UITabBarItem *item, NSUInteger index,
