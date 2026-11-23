@@ -2,6 +2,7 @@
 #import <QuartzCore/QuartzCore.h>
 #import "../Shared/LGLiveBackdropView.h"
 #import "../Shared/LGGlassKit.h"
+#import "../Shared/LGCompatibility.h"
 #import <objc/runtime.h>
 
 static void *kQAGlassKey = &kQAGlassKey;
@@ -71,7 +72,7 @@ static void injectQuickActionsGlass(UIVisualEffectView *fx) {
     if (glass.superview != container) [container insertSubview:glass atIndex:0];
     glass.frame               = container.bounds;
     glass.layer.cornerRadius  = fmin(CGRectGetWidth(container.bounds), CGRectGetHeight(container.bounds)) * 0.5;
-    glass.layer.cornerCurve   = kCACornerCurveContinuous;
+    LGCompatApplyCornerCurve(glass.layer, kCACornerCurveContinuous);
     glass.layer.masksToBounds = YES;
     [glass applyFilters];
     if (!sQuickActionHosts) sQuickActionHosts = [NSHashTable weakObjectsHashTable];
