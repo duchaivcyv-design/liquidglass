@@ -1,4 +1,4 @@
-name: build-rootful-ios12
+name: "build-rootful-ios12"
 
 on:
   push:
