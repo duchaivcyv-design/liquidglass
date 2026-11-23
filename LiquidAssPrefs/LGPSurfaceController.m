@@ -71,8 +71,14 @@ static CGFloat LGPScrollViewTopInset(UIScrollView *scrollView) {
 
 static UIImage *LGPCompatSymbolImage(NSString *symbolName, CGFloat pointSize, UIFontWeight weight, NSString *fallbackTitle) {
     if (@available(iOS 13.0, *)) {
-        UIImageSymbolConfiguration *config =
-            [UIImageSymbolConfiguration configurationWithPointSize:pointSize weight:weight];
+        Class symbolCfgClass = objc_getClass("UIImageSymbolConfiguration");
+        id config = nil;
+        if (symbolCfgClass) {
+            SEL sel = NSSelectorFromString(@"configurationWithPointSize:weight:");
+            if ([symbolCfgClass respondsToSelector:sel]) {
+                config = ((id (*)(id, SEL, CGFloat, UIFontWeight))objc_msgSend)(symbolCfgClass, sel, pointSize, weight);
+            }
+        }
         UIImage *img = [UIImage systemImageNamed:symbolName withConfiguration:config];
         if (img) return img;
     }
@@ -1383,7 +1389,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
             NSString *title = choice[@"title"];
             if (!value.length || !title.length) continue;
             UIAction *action = [UIAction actionWithTitle:title
-                                                   image:nil
+                                                   image:[[UIImage alloc] init]
                                               identifier:nil
                                                  handler:^(__kindof UIAction * _Nonnull actionObj) {
                 (void)actionObj;
