@@ -370,7 +370,7 @@ static const CGFloat kLGGlassEdgeWidth = 1.0;
         _lastRadiusStep = step;
         base = [base stringByAppendingFormat:@".r%ld", (long)step];
     }
-    NSString *type = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+    NSString *type = LGCompatInterfaceStyle(self.traitCollection) == UIUserInterfaceStyleDark
         ? [base stringByAppendingString:@".dark"] : base;
     if (_parameterRefreshVariant) type = [type stringByAppendingString:@".refresh"];
     return type;
@@ -445,7 +445,7 @@ static const CGFloat kLGGlassEdgeWidth = 1.0;
 }
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
     [super traitCollectionDidChange:previousTraitCollection];
-    if (previousTraitCollection.userInterfaceStyle != self.traitCollection.userInterfaceStyle) {
+    if (LGCompatInterfaceStyle(previousTraitCollection) != LGCompatInterfaceStyle(self.traitCollection)) {
         _filterAttached = NO;
         [self applyFilters];
         [self updateSpecular];

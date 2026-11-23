@@ -63,3 +63,26 @@ Source-level changes, shell syntax, plist syntax and archive integrity can be ch
 - Added `validate-ios12-port.sh` to check deployment/package declarations, early shim installation, private Backboardd renderer gating, OS-specific feature gates, shell syntax and plist syntax.
 
 The validator is a source-level consistency check only. It does not replace a Theos compile, package install, or device test.
+
+
+## Stability fixes (port4) — SpringBoard crash / Safe Mode on iOS 12.5.x
+
+Crash logs from an iOS 12.5.8 device showed SpringBoard dying twice in a row (EXC_BAD_ACCESS at 0x0, main thread) inside
+the third-party `HSWidgets` / `HSModernWeatherWidget` code, which triggers the jailbreak's Safe Mode. Fixes:
+
+1. `liquidass.plist` matched `com.apple.UIKit`, so the tweak loaded into every UIKit process. Top-level Logos hooks
+   (CALayer, MTMaterialView, ...) are installed before any `%ctor` gate runs. The filter is now limited to
+   `SpringBoard`, `assistivetouchd` and `MobileSafari`.
+2. `LiquidAssRWB` was gated at `< 12` instead of `< 14`, so its widget-stack/UIWindow/UIView hooks ran inside SpringBoard
+   on iOS 12. The gate is now `< 14`.
+3. `LGCompatInstallRuntimeShims` added iOS 13+ selectors to shared UIKit classes under their real names
+   (`UIImage systemImageNamed:`, `UIColor labelColor`, `UIWindow windowScene`, `UITraitCollection userInterfaceStyle`,
+   `UIView overrideUserInterfaceStyle`, `UIControl addAction:forControlEvents:`, `UIButton menu`, ...). Other tweaks
+   that probe with `respondsToSelector:` then took their iOS 13+ path and received nil/placeholder values. No iOS 13+
+   selector is injected any more. All call sites go through `LGCompat*` helpers that use the native API when present and
+   otherwise call the private fallback directly. The only method still added to UIKit is the tweak-private
+   `lgCompatPresentMenu` on `UIButton`.
+4. `validate-ios12-port.sh` now fails if the UIKit filter returns, or if raw iOS 13+ API / UIKit injection is reintroduced.
+
+Verification: `LGCompatibility.m` was syntax/type checked with clang `-Wall` against minimal UIKit/Foundation stub headers
+(front end only). This is NOT a Theos build and NOT a device test.

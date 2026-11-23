@@ -25,28 +25,28 @@ static const CGFloat kLGGoToTopCornerRadiusRatio = 0.5;
 
 static UIColor *LGPCompatLabelColor(void) {
     if (@available(iOS 13.0, *)) {
-        return [UIColor labelColor];
+        return LGCompatColor(@"labelColor");
     }
     return [UIColor blackColor];
 }
 
 static UIColor *LGPCompatSecondaryLabelColor(void) {
     if (@available(iOS 13.0, *)) {
-        return [UIColor secondaryLabelColor];
+        return LGCompatColor(@"secondaryLabelColor");
     }
     return [UIColor colorWithWhite:0.42 alpha:1.0];
 }
 
 static UIColor *LGPCompatTertiaryLabelColor(void) {
     if (@available(iOS 13.0, *)) {
-        return [UIColor tertiaryLabelColor];
+        return LGCompatColor(@"tertiaryLabelColor");
     }
     return [UIColor colorWithWhite:0.58 alpha:1.0];
 }
 
 static UIColor *LGPCompatSystemGroupedBackgroundColor(void) {
     if (@available(iOS 13.0, *)) {
-        return [UIColor systemGroupedBackgroundColor];
+        return LGCompatColor(@"systemGroupedBackgroundColor");
     }
     return [UIColor groupTableViewBackgroundColor];
 }
@@ -79,7 +79,7 @@ static UIImage *LGPCompatSymbolImage(NSString *symbolName, CGFloat pointSize, UI
                 config = ((id (*)(id, SEL, CGFloat, UIFontWeight))objc_msgSend)(symbolCfgClass, sel, pointSize, weight);
             }
         }
-        UIImage *img = [UIImage systemImageNamed:symbolName withConfiguration:config];
+        UIImage *img = LGCompatSystemImageNamedConfigured(symbolName, config);
         if (img) return img;
     }
     if (!fallbackTitle.length) return nil;
@@ -230,7 +230,7 @@ static CGFloat LGGoToTopCornerRadiusForView(UIView *view) {
     _screenTitle = [title copy];
     _screenSubtitle = [subtitle copy];
     _screenIdentifier = [identifier copy];
-    _accentColor = tintColor ?: [UIColor systemBlueColor];
+    _accentColor = tintColor ?: LGCompatColor(@"systemBlueColor");
     _items = [items copy];
     self.title = title;
     return self;
@@ -1003,7 +1003,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
 
     BOOL isDark = NO;
     if (@available(iOS 12.0, *)) {
-        isDark = (self.traitCollection.userInterfaceStyle == 2); // UIUserInterfaceStyleDark
+        isDark = (LGCompatInterfaceStyle(self.traitCollection) == 2); // UIUserInterfaceStyleDark
     }
     for (NSDictionary *section in sections) {
         NSString *title = section[@"title"];
@@ -1243,7 +1243,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
 
 - (UISwitch *)configuredToggleForItem:(NSDictionary *)item {
     UISwitch *toggle = [[LGPrefsSwitchClass() alloc] initWithFrame:CGRectZero];
-    toggle.onTintColor = UIColor.systemGreenColor;
+    toggle.onTintColor = LGCompatColor(@"systemGreenColor");
     toggle.on = [LGReadPreference(item[@"key"], item[@"default"]) boolValue];
     objc_setAssociatedObject(toggle, kLGDefaultValueKey, item[@"default"], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     objc_setAssociatedObject(toggle, kLGPreferenceKeyKey, item[@"key"], OBJC_ASSOCIATION_COPY_NONATOMIC);
@@ -1408,9 +1408,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
                                                 currentValue:selectedValue
                                                   menuButton:strongMenuButton
                                                  titleUpdate:applyMenuSelectionTitle];
-                    if ([strongMenuButton respondsToSelector:@selector(setMenu:)]) {
-                        ((void (*)(id, SEL, id))objc_msgSend)(strongMenuButton, @selector(setMenu:), updatedMenu);
-                    }
+                    LGCompatSetButtonMenu(strongMenuButton, updatedMenu);
                     if ([item[@"reload_on_change"] boolValue]) {
                         [strongSelf updateVisibleValueControlledItemsAnimated:YES];
                     }
@@ -1503,8 +1501,8 @@ static void LGRestartAssistiveTouchDaemon(void) {
                             currentValue:currentValue
                               menuButton:menuButton
                              titleUpdate:applyMenuSelectionTitle];
-        if (builtMenu && [menuButton respondsToSelector:@selector(setMenu:)]) {
-            ((void (*)(id, SEL, id))objc_msgSend)(menuButton, @selector(setMenu:), builtMenu);
+        if (builtMenu) {
+            LGCompatSetButtonMenu(menuButton, builtMenu);
         }
     } else {
         objc_setAssociatedObject(menuButton, kLGPanelItemKey, item, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -1777,7 +1775,7 @@ static void LGRestartAssistiveTouchDaemon(void) {
     UILabel *valueLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     valueLabel.text = stored.length ? stored : fallback;
     if (@available(iOS 13.0, *)) {
-        valueLabel.font = [UIFont monospacedSystemFontOfSize:15.0 weight:UIFontWeightSemibold];
+        valueLabel.font = LGCompatMonospacedFont(15.0, UIFontWeightSemibold);
     } else {
         valueLabel.font = [UIFont boldSystemFontOfSize:15.0];
     }

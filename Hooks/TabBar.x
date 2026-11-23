@@ -768,7 +768,7 @@ static UIColor *LGTabBarAccentColor(UITabBar *bar) {
             }
         }
     }
-    return accent ?: UIColor.systemBlueColor;
+    return accent ?: LGCompatColor(@"systemBlueColor");
 }
 
 static UIView *LGTabBarBlueOverlay(UITabBar *bar, BOOL create) {
@@ -1161,7 +1161,7 @@ static void LGStyleStockTabBar(UITabBar *bar) {
              motion.awaitingRestingShape);
         NSUInteger selectedIndex = [bar.items indexOfObjectIdenticalTo:bar.selectedItem];
         if (selectedIndex != NSNotFound && selectedIndex < buttons.count) {
-            BOOL dark = bar.traitCollection.userInterfaceStyle ==
+            BOOL dark = LGCompatInterfaceStyle(bar.traitCollection) ==
                         UIUserInterfaceStyleDark;
             if (!transitioning) {
                 UIView *selectedButton = buttons[selectedIndex];
@@ -1392,12 +1392,12 @@ static void LGShowTabBarSelectionLens(UITabBarButton *button, UITouch *touch) {
                                  OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
     objc_setAssociatedObject(bar, kLGTabBarAccentColorKey,
-                             bar.tintColor ?: UIColor.systemBlueColor,
+                             bar.tintColor ?: LGCompatColor(@"systemBlueColor"),
                              OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     UIColor *neutralTint = bar.unselectedItemTintColor;
     if (!neutralTint) {
         neutralTint = [UIColor colorWithWhite:
-            bar.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+            LGCompatInterfaceStyle(bar.traitCollection) == UIUserInterfaceStyleDark
                 ? 0.65 : 0.35 alpha:1.0];
     }
     bar.tintColor = neutralTint;

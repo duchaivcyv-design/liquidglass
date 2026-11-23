@@ -57,8 +57,8 @@ static void injectQuickActionsGlass(UIVisualEffectView *fx) {
     qaSetBackdropHidden(fx);
 
     if (@available(iOS 13.0, *)) {
-        fx.overrideUserInterfaceStyle        = UIUserInterfaceStyleLight;
-        container.overrideUserInterfaceStyle = UIUserInterfaceStyleLight;
+        LGCompatSetOverrideInterfaceStyle(fx, UIUserInterfaceStyleLight);
+        LGCompatSetOverrideInterfaceStyle(container, UIUserInterfaceStyleLight);
     }
 
     LGLiveBackdropView *glass = objc_getAssociatedObject(fx, kQAGlassKey);
@@ -83,8 +83,8 @@ static void injectQuickActionsGlass(UIVisualEffectView *fx) {
 static void removeQuickActionsGlass(UIVisualEffectView *fx) {
     LGLiveBackdropView *glass = objc_getAssociatedObject(fx, kQAGlassKey);
     if (@available(iOS 13.0, *)) {
-        fx.overrideUserInterfaceStyle             = UIUserInterfaceStyleUnspecified;
-        fx.contentView.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
+        LGCompatSetOverrideInterfaceStyle(fx, UIUserInterfaceStyleUnspecified);
+        LGCompatSetOverrideInterfaceStyle(fx.contentView, UIUserInterfaceStyleUnspecified);
     }
     UIView *backdrop = objc_getAssociatedObject(fx, kQABackdropKey);
     NSNumber *alpha = objc_getAssociatedObject(fx, kQABackdropAlphaKey);

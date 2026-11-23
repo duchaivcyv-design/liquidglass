@@ -2,6 +2,16 @@
 #import <objc/runtime.h>
 #import <objc/message.h>
 #import <math.h>
+#import <string.h>
+
+#pragma clang diagnostic ignored "-Wunused-function"
+
+static void LGCompatButtonSetMenu(id self, SEL cmd, id menu);
+static void LGCompatButtonSetShowsMenu(id self, SEL cmd, BOOL show);
+static void LGCompatControlAddAction(id self, SEL cmd, id action, NSUInteger events);
+static UIImage *LGCompatDrawSymbol(NSString *name, id configuration);
+static id LGCompatLayerCornerCurve(id self, SEL cmd);
+static void LGCompatSetLayerCornerCurve(id self, SEL cmd, id value);
 
 static const void *kLGCompatCornerCurveKey = &kLGCompatCornerCurveKey;
 static const void *kLGCompatLayerFiltersKey = &kLGCompatLayerFiltersKey;
@@ -114,6 +124,8 @@ void LGCompatApplyCornerCurve(CALayer *layer, NSString *curve) {
     SEL sel = NSSelectorFromString(@"setCornerCurve:");
     if ([layer respondsToSelector:sel]) {
         ((void (*)(id, SEL, id))objc_msgSend)(layer, sel, curve);
+    } else {
+        LGCompatSetLayerCornerCurve(layer, sel, curve);
     }
 }
 
@@ -123,7 +135,7 @@ NSString *LGCompatReadCornerCurve(CALayer *layer) {
     if ([layer respondsToSelector:sel]) {
         return ((id (*)(id, SEL))objc_msgSend)(layer, sel);
     }
-    return nil;
+    return LGCompatLayerCornerCurve(layer, sel);
 }
 
 UIColor *LGCompatSeparatorColorValue(void) {
@@ -160,7 +172,7 @@ UIImage *LGCompatSystemImageNamedConfigured(NSString *name, id configuration) {
     SEL sel = NSSelectorFromString(@"systemImageNamed:withConfiguration:");
     if ([UIImage respondsToSelector:sel])
         return ((id (*)(id, SEL, id, id))objc_msgSend)(UIImage.class, sel, name, configuration);
-    return nil;
+    return LGCompatDrawSymbol(name, configuration);
 }
 
 void LGCompatSetButtonMenu(UIButton *button, id menu) {
@@ -168,6 +180,8 @@ void LGCompatSetButtonMenu(UIButton *button, id menu) {
     SEL sel = NSSelectorFromString(@"setMenu:");
     if ([button respondsToSelector:sel])
         ((void (*)(id, SEL, id))objc_msgSend)(button, sel, menu);
+    else
+        LGCompatButtonSetMenu(button, sel, menu);
 }
 
 void LGCompatSetButtonShowsMenu(UIButton *button, BOOL show) {
@@ -175,6 +189,8 @@ void LGCompatSetButtonShowsMenu(UIButton *button, BOOL show) {
     SEL sel = NSSelectorFromString(@"setShowsMenuAsPrimaryAction:");
     if ([button respondsToSelector:sel])
         ((void (*)(id, SEL, BOOL))objc_msgSend)(button, sel, show);
+    else
+        LGCompatButtonSetShowsMenu(button, sel, show);
 }
 
 void LGCompatAddActionToControl(UIControl *control, id action, UIControlEvents events) {
@@ -183,6 +199,8 @@ void LGCompatAddActionToControl(UIControl *control, id action, UIControlEvents e
     if ([control respondsToSelector:sel])
         ((void (*)(id, SEL, id, NSUInteger))objc_msgSend)(
             control, sel, action, (NSUInteger)events);
+    else
+        LGCompatControlAddAction(control, sel, action, (NSUInteger)events);
 }
 
 UIColor *LGCompatResolvedColor(UIColor *color, UITraitCollection *traits) {
@@ -512,82 +530,81 @@ static BOOL LGCompatAddClassMethodIfMissing(Class cls, SEL selector, IMP impleme
     return class_addMethod(meta, selector, implementation, types);
 }
 
+/*
+ * New helper entry points. They use the native API when the OS has it and
+ * otherwise call the private fallback implementation above DIRECTLY.
+ */
+UIColor *LGCompatColor(NSString *selectorName) {
+    SEL sel = NSSelectorFromString(selectorName);
+    if ([UIColor respondsToSelector:sel]) {
+        UIColor *native = ((id (*)(id, SEL))objc_msgSend)(UIColor.class, sel);
+        if (native) return native;
+    }
+    struct LGColorFallback { const char *name; UIColor *(*fn)(id, SEL); };
+    static const struct LGColorFallback table[] = {
+        {"labelColor", LGCompatLabelColor},
+        {"secondaryLabelColor", LGCompatSecondaryLabelColor},
+        {"tertiaryLabelColor", LGCompatTertiaryLabelColor},
+        {"separatorColor", LGCompatSeparatorColor},
+        {"systemBlueColor", LGCompatSystemBlue},
+        {"systemGreenColor", LGCompatSystemGreen},
+        {"systemRedColor", LGCompatSystemRed},
+        {"systemOrangeColor", LGCompatSystemOrange},
+        {"systemYellowColor", LGCompatSystemYellow},
+        {"systemPurpleColor", LGCompatSystemPurple},
+        {"systemIndigoColor", LGCompatSystemIndigo},
+        {"systemTealColor", LGCompatSystemTeal},
+        {"systemGrayColor", LGCompatSystemGray},
+        {"systemGray5Color", LGCompatSystemGray5},
+        {"systemGroupedBackgroundColor", LGCompatSystemGroupedBackground},
+        {"secondarySystemGroupedBackgroundColor", LGCompatSecondaryGroupedBackground},
+        {"tertiarySystemFillColor", LGCompatTertiarySystemFill},
+    };
+    const char *want = selectorName.UTF8String;
+    for (size_t i = 0; want && i < sizeof(table) / sizeof(table[0]); i++) {
+        if (strcmp(table[i].name, want) == 0) return table[i].fn(UIColor.class, sel);
+    }
+    return [UIColor blackColor];
+}
+
+NSInteger LGCompatInterfaceStyle(UITraitCollection *traits) {
+    if (!traits) return 0;
+    SEL sel = NSSelectorFromString(@"userInterfaceStyle");
+    if (![traits respondsToSelector:sel]) return 0;
+    return ((NSInteger (*)(id, SEL))objc_msgSend)(traits, sel);
+}
+
+void LGCompatSetOverrideInterfaceStyle(UIView *view, NSInteger style) {
+    if (!view) return;
+    SEL sel = NSSelectorFromString(@"setOverrideUserInterfaceStyle:");
+    if ([view respondsToSelector:sel])
+        ((void (*)(id, SEL, NSInteger))objc_msgSend)(view, sel, style);
+}
+
+UIImage *LGCompatSystemImage(NSString *name) {
+    return LGCompatSystemImageNamedConfigured(name, nil);
+}
+
+UIFont *LGCompatMonospacedFont(CGFloat size, CGFloat weight) {
+    SEL sel = NSSelectorFromString(@"monospacedSystemFontOfSize:weight:");
+    if ([UIFont respondsToSelector:sel]) {
+        UIFont *native = ((id (*)(id, SEL, CGFloat, CGFloat))objc_msgSend)(UIFont.class, sel, size, weight);
+        if (native) return native;
+    }
+    return LGCompatMonospacedSystemFont(UIFont.class, sel, size, weight);
+}
+
+/*
+ * Only a tweak-private selector is installed on a shared UIKit class. Its
+ * name is unique to this tweak, so no other tweak or app can probe it.
+ * Nothing iOS 13+ is ever added to UIKit under its real name.
+ */
 void LGCompatInstallRuntimeShims(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        BOOL isIOS12OrEarlier = LGCompatIsIOS12OrEarlier();
-        BOOL usesLegacyMenus = LGCompatUsesLegacyMenus();
-        if (!isIOS12OrEarlier && !usesLegacyMenus) return;
-
-        if (isIOS12OrEarlier) {
-        LGCompatAddMethodIfMissing(CALayer.class, @selector(cornerCurve), (IMP)LGCompatLayerCornerCurve, "@@:");
-        LGCompatAddMethodIfMissing(CALayer.class, @selector(setCornerCurve:), (IMP)LGCompatSetLayerCornerCurve, "v@:@");
-        LGCompatAddMethodIfMissing(CALayer.class, NSSelectorFromString(@"filters"),
-                                   (IMP)LGCompatLayerFilters, "@@:");
-        LGCompatAddMethodIfMissing(CALayer.class, NSSelectorFromString(@"setFilters:"),
-                                   (IMP)LGCompatSetLayerFilters, "v@:@");
-        LGCompatAddMethodIfMissing(CALayer.class, NSSelectorFromString(@"backgroundFilters"),
-                                   (IMP)LGCompatLayerBackgroundFilters, "@@:");
-        LGCompatAddMethodIfMissing(CALayer.class, NSSelectorFromString(@"setBackgroundFilters:"),
-                                   (IMP)LGCompatSetLayerBackgroundFilters, "v@:@");
-
-        struct LGColorShim { const char *name; IMP imp; } colors[] = {
-            {"labelColor", (IMP)LGCompatLabelColor},
-            {"secondaryLabelColor", (IMP)LGCompatSecondaryLabelColor},
-            {"tertiaryLabelColor", (IMP)LGCompatTertiaryLabelColor},
-            {"separatorColor", (IMP)LGCompatSeparatorColor},
-            {"systemBlueColor", (IMP)LGCompatSystemBlue},
-            {"systemGreenColor", (IMP)LGCompatSystemGreen},
-            {"systemRedColor", (IMP)LGCompatSystemRed},
-            {"systemOrangeColor", (IMP)LGCompatSystemOrange},
-            {"systemYellowColor", (IMP)LGCompatSystemYellow},
-            {"systemPurpleColor", (IMP)LGCompatSystemPurple},
-            {"systemIndigoColor", (IMP)LGCompatSystemIndigo},
-            {"systemTealColor", (IMP)LGCompatSystemTeal},
-            {"systemGrayColor", (IMP)LGCompatSystemGray},
-            {"systemGray5Color", (IMP)LGCompatSystemGray5},
-            {"systemGroupedBackgroundColor", (IMP)LGCompatSystemGroupedBackground},
-            {"secondarySystemGroupedBackgroundColor", (IMP)LGCompatSecondaryGroupedBackground},
-            {"tertiarySystemFillColor", (IMP)LGCompatTertiarySystemFill},
-            {NULL, NULL}
-        };
-        for (NSUInteger i = 0; colors[i].name; i++) {
-            LGCompatAddClassMethodIfMissing(UIColor.class, sel_registerName(colors[i].name), colors[i].imp, "@@:");
-        }
-        LGCompatAddClassMethodIfMissing(UIColor.class, @selector(colorWithDynamicProvider:),
-                                        (IMP)LGCompatDynamicColor, "@@:@?");
-
-        LGCompatAddMethodIfMissing(UITraitCollection.class, @selector(userInterfaceStyle),
-                                   (IMP)LGCompatTraitUserInterfaceStyle, "q@:");
-        LGCompatAddMethodIfMissing(UIWindow.class, @selector(windowScene),
-                                   (IMP)LGCompatWindowScene, "@@:");
-        LGCompatAddMethodIfMissing(UIView.class, @selector(overrideUserInterfaceStyle),
-                                   (IMP)LGCompatViewOverrideStyle, "q@:");
-        LGCompatAddMethodIfMissing(UIView.class, @selector(setOverrideUserInterfaceStyle:),
-                                   (IMP)LGCompatViewSetOverrideStyle, "v@:q");
-
-        LGCompatAddClassMethodIfMissing(UIImage.class, NSSelectorFromString(@"systemImageNamed:"),
-                                        (IMP)LGCompatSystemImageNamed, "@@:@");
-        LGCompatAddClassMethodIfMissing(UIImage.class,
-            NSSelectorFromString(@"systemImageNamed:withConfiguration:"),
-            (IMP)LGCompatSystemImageNamedWithConfiguration, "@@:@@");
-        LGCompatAddClassMethodIfMissing(UIFont.class,
-            NSSelectorFromString(@"monospacedSystemFontOfSize:weight:"),
-            (IMP)LGCompatMonospacedSystemFont, "@@:dd");
-        }
-
-        if (usesLegacyMenus) {
-        LGCompatAddMethodIfMissing(UIControl.class,
-            NSSelectorFromString(@"addAction:forControlEvents:"),
-            (IMP)LGCompatControlAddAction, "v@:@Q");
-
-        LGCompatAddMethodIfMissing(UIButton.class, @selector(menu), (IMP)LGCompatButtonMenu, "@@:");
-        LGCompatAddMethodIfMissing(UIButton.class, @selector(setMenu:), (IMP)LGCompatButtonSetMenu, "v@:@");
-        LGCompatAddMethodIfMissing(UIButton.class, @selector(showsMenuAsPrimaryAction), (IMP)LGCompatButtonShowsMenu, "c@:");
-        LGCompatAddMethodIfMissing(UIButton.class, @selector(setShowsMenuAsPrimaryAction:), (IMP)LGCompatButtonSetShowsMenu, "v@:c");
+        if (!LGCompatUsesLegacyMenus()) return;
         LGCompatAddMethodIfMissing(UIButton.class, NSSelectorFromString(@"lgCompatPresentMenu"),
                                    (IMP)LGCompatPresentButtonMenu, "v@:");
-        }
     });
 }
 

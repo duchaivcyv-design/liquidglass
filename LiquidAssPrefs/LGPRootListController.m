@@ -11,21 +11,21 @@
 
 static UIColor *LGRCompatSystemGroupedBackgroundColor(void) {
     if (@available(iOS 13.0, *)) {
-        return [UIColor systemGroupedBackgroundColor];
+        return LGCompatColor(@"systemGroupedBackgroundColor");
     }
     return [UIColor groupTableViewBackgroundColor];
 }
 
 static UIColor *LGRCompatSecondaryLabelColor(void) {
     if (@available(iOS 13.0, *)) {
-        return [UIColor secondaryLabelColor];
+        return LGCompatColor(@"secondaryLabelColor");
     }
     return [UIColor colorWithWhite:0.42 alpha:1.0];
 }
 
 static UIColor *LGRCompatTertiaryLabelColor(void) {
     if (@available(iOS 13.0, *)) {
-        return [UIColor tertiaryLabelColor];
+        return LGCompatColor(@"tertiaryLabelColor");
     }
     return [UIColor colorWithWhite:0.58 alpha:1.0];
 }
@@ -39,7 +39,7 @@ static void LGRApplyContinuousCornerCurve(CALayer *layer) {
 
 static UIImage *LGRCompatChevronRightImage(void) {
     if (@available(iOS 13.0, *)) {
-        UIImage *img = [UIImage systemImageNamed:@"chevron.right"];
+        UIImage *img = LGCompatSystemImage(@"chevron.right");
         if (img) return img;
     }
     NSString *fallbackTitle = @">";
@@ -85,8 +85,8 @@ static UIImage *LGRCompatChevronRightImage(void) {
     UIButton *moreOptionsButton = (UIButton *)[self navCardWithTitle:LGPrefsSurfaceTitle(LGPrefsSurfaceMoreOptions) subtitle:LGPrefsSurfaceSubtitle(LGPrefsSurfaceMoreOptions) color:LGPrefsSurfaceTintColor(LGPrefsSurfaceMoreOptions) symbolName:LGPrefsSurfaceSymbolName(LGPrefsSurfaceMoreOptions) action:@selector(handleAboutPressed)];
     UIView *miscSection = [self rootSectionViewWithTitle:LGLocalized(@"prefs.section.misc.title")
                                                 subtitle:nil];
-    UIButton *respringButton = (UIButton *)[self navCardWithTitle:LGLocalized(@"prefs.misc.respring.title") subtitle:LGLocalized(@"prefs.misc.respring.subtitle") color:[UIColor systemOrangeColor] symbolName:@"arrow.counterclockwise.circle.fill" action:@selector(handleRespringPressed)];
-    UIButton *safeModeButton = (UIButton *)[self navCardWithTitle:LGLocalized(@"prefs.misc.exit_safe_mode.title") subtitle:LGLocalized(@"prefs.misc.exit_safe_mode.subtitle") color:[UIColor systemRedColor] symbolName:@"exclamationmark.circle.fill" action:@selector(handleExitSafeModePressed)];
+    UIButton *respringButton = (UIButton *)[self navCardWithTitle:LGLocalized(@"prefs.misc.respring.title") subtitle:LGLocalized(@"prefs.misc.respring.subtitle") color:LGCompatColor(@"systemOrangeColor") symbolName:@"arrow.counterclockwise.circle.fill" action:@selector(handleRespringPressed)];
+    UIButton *safeModeButton = (UIButton *)[self navCardWithTitle:LGLocalized(@"prefs.misc.exit_safe_mode.title") subtitle:LGLocalized(@"prefs.misc.exit_safe_mode.subtitle") color:LGCompatColor(@"systemRedColor") symbolName:@"exclamationmark.circle.fill" action:@selector(handleExitSafeModePressed)];
     self.lg_safeModeButton = safeModeButton;
     UIButton *aboutButton = (UIButton *)[self navCardWithTitle:LGPrefsSurfaceTitle(LGPrefsSurfaceSettings) subtitle:LGPrefsSurfaceSubtitle(LGPrefsSurfaceSettings) color:LGPrefsSurfaceTintColor(LGPrefsSurfaceSettings) symbolName:LGPrefsSurfaceSymbolName(LGPrefsSurfaceSettings) action:@selector(openPrefsSettings)];
     UIButton *supportButton = (UIButton *)[self navCardWithTitle:LGLocalized(@"prefs.misc.support.title") subtitle:LGLocalized(@"prefs.misc.support.subtitle") color:[UIColor colorWithRed:0.345 green:0.396 blue:0.949 alpha:1.0] image:[self discordIcon] action:@selector(handleSupportPressed)];
@@ -314,7 +314,7 @@ static UIImage *LGRCompatChevronRightImage(void) {
     subtitleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular];
 
     UISwitch *toggle = [[LGPrefsSwitchClass() alloc] initWithFrame:CGRectZero];
-    toggle.onTintColor = [UIColor systemBlueColor];
+    toggle.onTintColor = LGCompatColor(@"systemBlueColor");
     toggle.on = [self isGlobalEnabled];
     self.lg_globalToggle = toggle;
     [toggle addTarget:self action:@selector(handleGlobalToggleChanged:) forControlEvents:UIControlEventValueChanged];

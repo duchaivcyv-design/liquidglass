@@ -382,7 +382,7 @@ static void RWBApplyDarkStyleIfAvailable(UIWindow *window) {
 %end
 
 %ctor {
-    if (NSProcessInfo.processInfo.operatingSystemVersion.majorVersion < 12) return;
+    if (NSProcessInfo.processInfo.operatingSystemVersion.majorVersion < 14) return; // RWB renderer is iOS 14+ only; never run in SpringBoard on iOS 12
     ReloadPrefs();
     if (!kIsEnabled) return;
 

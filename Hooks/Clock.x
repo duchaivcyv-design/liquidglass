@@ -907,7 +907,7 @@ static BOOL LGClockLabelUsesOurFont(UILabel *label) {
 
 static UIColor *LGClockPullTint(UITraitCollection *traits) {
     const LGHostDefinition *host = &kLGHostRegistry[LGHostIdentifierClock];
-    BOOL dark = traits.userInterfaceStyle == UIUserInterfaceStyleDark;
+    BOOL dark = LGCompatInterfaceStyle(traits) == UIUserInterfaceStyleDark;
     NSString *fallback = [NSString stringWithUTF8String:dark ? host->darkTintHex : host->lightTintHex];
     const char *hex = LG_prefString(dark ? @"Clock.DarkTintColor" : @"Clock.LightTintColor",
                                     fallback).UTF8String;

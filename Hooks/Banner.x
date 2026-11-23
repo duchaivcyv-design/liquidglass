@@ -93,7 +93,7 @@ static UIColor *LGForcedPlatterTextColor(UIView *view) {
     if (!view) return nil;
     if (LGIsTopBannerPresentation(view))
         return lgHostEnabled(@"Banner") &&
-               view.traitCollection.userInterfaceStyle == UIUserInterfaceStyleLight
+               LGCompatInterfaceStyle(view.traitCollection) == UIUserInterfaceStyleLight
             ? UIColor.blackColor : nil;
     if (!lgHostEnabled(@"Notification") || !LGNotificationAncestor(view)) return nil;
     return [LGGlassPreferenceValue(@"Notification.LabelColor") isEqual:@"black"]

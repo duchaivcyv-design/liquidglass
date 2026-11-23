@@ -30,51 +30,51 @@ void * const kLGControlledByEnabledKey = (void *)&kLGControlledByEnabledKey;
 
 static UIColor *LGUCompatLabelColor(void) {
     if (@available(iOS 13.0, *)) {
-        return [UIColor labelColor];
+        return LGCompatColor(@"labelColor");
     }
     return [UIColor blackColor];
 }
 
 static UIColor *LGUCompatSecondaryLabelColor(void) {
     if (@available(iOS 13.0, *)) {
-        return [UIColor secondaryLabelColor];
+        return LGCompatColor(@"secondaryLabelColor");
     }
     return [UIColor colorWithWhite:0.42 alpha:1.0];
 }
 
 static UIColor *LGUCompatTertiaryLabelColor(void) {
     if (@available(iOS 13.0, *)) {
-        return [UIColor tertiaryLabelColor];
+        return LGCompatColor(@"tertiaryLabelColor");
     }
     return [UIColor colorWithWhite:0.58 alpha:1.0];
 }
 
 static UIColor *LGUCompatTertiaryFillColor(void) {
     if (@available(iOS 13.0, *)) {
-        return [UIColor tertiarySystemFillColor];
+        return LGCompatColor(@"tertiarySystemFillColor");
     }
     return [UIColor colorWithWhite:0.90 alpha:1.0];
 }
 
 static UIColor *LGUCompatSecondaryGroupedBackgroundColor(void) {
     if (@available(iOS 13.0, *)) {
-        return [UIColor secondarySystemGroupedBackgroundColor];
+        return LGCompatColor(@"secondarySystemGroupedBackgroundColor");
     }
     return [UIColor whiteColor];
 }
 
 static UIColor *LGUCompatIndigoColor(void) {
     if (@available(iOS 13.0, *)) {
-        return [UIColor systemIndigoColor];
+        return LGCompatColor(@"systemIndigoColor");
     }
     return [UIColor colorWithRed:0.345 green:0.337 blue:0.839 alpha:1.0];
 }
 
 static UIColor *LGUCompatAdaptiveColor(UIColor *lightColor, UIColor *darkColor) {
     if (@available(iOS 13.0, *)) {
-        return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull trait) {
-            return trait.userInterfaceStyle == UIUserInterfaceStyleDark ? darkColor : lightColor;
-        }];
+        return LGCompatCreateDynamicColor(^UIColor *(UITraitCollection *trait) {
+            return LGCompatInterfaceStyle(trait) == UIUserInterfaceStyleDark ? darkColor : lightColor;
+        });
     }
     return lightColor;
 }
@@ -88,7 +88,7 @@ static void LGUApplyContinuousCornerCurve(CALayer *layer) {
 
 static UIFont *LGUCompatMonospacedFont(CGFloat size, UIFontWeight weight) {
     if (@available(iOS 13.0, *)) {
-        return [UIFont monospacedSystemFontOfSize:size weight:weight];
+        return LGCompatMonospacedFont(size, weight);
     }
     UIFont *font = [UIFont fontWithName:@"Menlo" size:size];
     return font ?: [UIFont systemFontOfSize:size weight:weight];
@@ -869,7 +869,7 @@ void LGPresentTextInputSheet(UIViewController *controller,
     [applyButton setTitle:LGLocalized(@"prefs.button.apply") forState:UIControlStateNormal];
     [applyButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     applyButton.titleLabel.font = [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
-    applyButton.backgroundColor = [UIColor systemBlueColor];
+    applyButton.backgroundColor = LGCompatColor(@"systemBlueColor");
     applyButton.layer.cornerRadius = 23.0;
     LGUApplyContinuousCornerCurve(applyButton.layer);
     applyButton.layer.masksToBounds = YES;
@@ -1100,7 +1100,7 @@ void LGPresentMultilineTextInputSheet(UIViewController *controller,
     [applyButton setTitle:LGLocalized(@"prefs.button.apply") forState:UIControlStateNormal];
     [applyButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     applyButton.titleLabel.font = [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
-    applyButton.backgroundColor = [UIColor systemBlueColor];
+    applyButton.backgroundColor = LGCompatColor(@"systemBlueColor");
     applyButton.layer.cornerRadius = 23.0;
     LGUApplyContinuousCornerCurve(applyButton.layer);
     applyButton.layer.masksToBounds = YES;
@@ -1303,7 +1303,7 @@ static UIView *LGMakeRespringBar(id target, SEL respringAction, SEL laterAction)
     [button setTitle:LGLocalized(@"prefs.button.respring") forState:UIControlStateNormal];
     [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     button.titleLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
-    button.backgroundColor = [UIColor systemBlueColor];
+    button.backgroundColor = LGCompatColor(@"systemBlueColor");
     button.layer.cornerRadius = 14.0;
     LGUApplyContinuousCornerCurve(button.layer);
     [button addTarget:target action:respringAction forControlEvents:UIControlEventTouchUpInside];
@@ -1579,14 +1579,14 @@ UIView *LGMakeDonationCard(UIViewController *controller) {
     [stack addArrangedSubview:header];
 
     NSArray<NSDictionary *> *methods = @[
-        @{@"name": @"BTC", @"network": @"Bitcoin", @"symbol": @"B", @"color": UIColor.systemOrangeColor, @"address": @"bc1qlv830emqsffqslns2e3kglkgcdnlag0nfnyj4k"},
+        @{@"name": @"BTC", @"network": @"Bitcoin", @"symbol": @"B", @"color": LGCompatColor(@"systemOrangeColor"), @"address": @"bc1qlv830emqsffqslns2e3kglkgcdnlag0nfnyj4k"},
         @{@"name": @"ETH", @"network": @"Ethereum", @"symbol": @"E", @"color": LGUCompatIndigoColor(), @"address": @"0x6245EF47c749D1b5c2830b145cB943a8aD826bea"},
-        @{@"name": @"LTC", @"network": @"Litecoin", @"symbol": @"L", @"color": UIColor.systemGrayColor, @"address": @"ltc1q7j6vlgvymxdtwm46u0n22h7m4890cexfp22vfm"},
-        @{@"name": @"DOGE", @"network": @"Dogecoin", @"symbol": @"D", @"color": UIColor.systemYellowColor, @"address": @"D76nuR1HWSymSLhFYYhkfpc4JHg1HjvgWD"},
-        @{@"name": @"SOL", @"network": @"Solana", @"symbol": @"S", @"color": UIColor.systemPurpleColor, @"address": @"F1rH3PSMHFHXbGLGQiWXGLRaahfYoVULUwhsvrewM37W"},
-        @{@"name": @"TRX", @"network": @"Tron", @"symbol": @"T", @"color": UIColor.systemRedColor, @"address": @"TVuW2KcYBMcr2VAMhYVqYmoT15N3MbZ8eX"},
-        @{@"name": @"USDC", @"network": @"Polygon", @"symbol": @"U", @"color": UIColor.systemBlueColor, @"address": @"0x6245EF47c749D1b5c2830b145cB943a8aD826bea"},
-        @{@"name": @"USDT", @"network": @"Tron TRC-20", @"symbol": @"U", @"color": UIColor.systemGreenColor, @"address": @"TVuW2KcYBMcr2VAMhYVqYmoT15N3MbZ8eX"},
+        @{@"name": @"LTC", @"network": @"Litecoin", @"symbol": @"L", @"color": LGCompatColor(@"systemGrayColor"), @"address": @"ltc1q7j6vlgvymxdtwm46u0n22h7m4890cexfp22vfm"},
+        @{@"name": @"DOGE", @"network": @"Dogecoin", @"symbol": @"D", @"color": LGCompatColor(@"systemYellowColor"), @"address": @"D76nuR1HWSymSLhFYYhkfpc4JHg1HjvgWD"},
+        @{@"name": @"SOL", @"network": @"Solana", @"symbol": @"S", @"color": LGCompatColor(@"systemPurpleColor"), @"address": @"F1rH3PSMHFHXbGLGQiWXGLRaahfYoVULUwhsvrewM37W"},
+        @{@"name": @"TRX", @"network": @"Tron", @"symbol": @"T", @"color": LGCompatColor(@"systemRedColor"), @"address": @"TVuW2KcYBMcr2VAMhYVqYmoT15N3MbZ8eX"},
+        @{@"name": @"USDC", @"network": @"Polygon", @"symbol": @"U", @"color": LGCompatColor(@"systemBlueColor"), @"address": @"0x6245EF47c749D1b5c2830b145cB943a8aD826bea"},
+        @{@"name": @"USDT", @"network": @"Tron TRC-20", @"symbol": @"U", @"color": LGCompatColor(@"systemGreenColor"), @"address": @"TVuW2KcYBMcr2VAMhYVqYmoT15N3MbZ8eX"},
     ];
     for (NSUInteger index = 0; index < methods.count; index++) {
         NSDictionary *method = methods[index];

@@ -118,7 +118,7 @@ static BOOL isContextMenuReusableGapView(UIView *view) {
 
 static UIColor *contextMenuDividerColor(UIView *view) {
     UITraitCollection *traits = view.traitCollection ?: UIScreen.mainScreen.traitCollection;
-    if (traits.userInterfaceStyle == UIUserInterfaceStyleDark)
+    if (LGCompatInterfaceStyle(traits) == UIUserInterfaceStyleDark)
         return [UIColor colorWithWhite:1.0 alpha:0.16];
     return [UIColor colorWithWhite:0.0 alpha:0.10];
 }
@@ -379,7 +379,7 @@ static void relayoutContextMenuCellContent(UIView *contentView) {
 - (void)updateForBounds:(CGRect)bounds {
     self.frame = CGRectInset(bounds, 6.0, 2.5);
     self.layer.cornerRadius = CGRectGetHeight(self.bounds) * 0.5;
-    self.backgroundColor = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+    self.backgroundColor = LGCompatInterfaceStyle(self.traitCollection) == UIUserInterfaceStyleDark
         ? [UIColor colorWithWhite:1.0 alpha:0.14]
         : [UIColor colorWithWhite:0.0 alpha:0.14];
 }

@@ -36,6 +36,20 @@ grep -q 'operatingSystemVersion.majorVersion < 13' Hooks/ContextMenu.x || fail '
 grep -q 'operatingSystemVersion.majorVersion < 14' LiquidAssRWB/Tweak.x || fail 'RWB iOS 14 gate missing'
 pass 'App Library, WidgetKit, Context Menu and RWB are version-gated'
 
+grep -q 'com.apple.UIKit' liquidass.plist && fail 'main tweak filter must not match every UIKit app (com.apple.UIKit)'
+pass 'main tweak injects only into SpringBoard, assistivetouchd and MobileSafari'
+
+# Regression guards for the SpringBoard crash seen with third-party tweaks (HSWidgets).
+# iOS 13+ selectors must never be added to shared UIKit classes under their real names.
+if grep -nE 'Add(Class)?MethodIfMissing\((UIColor|UIImage|UIWindow|UITraitCollection|UIView|CALayer|UIFont|UIControl)\.class' Shared/LGCompatibility.m; then
+    fail 'LGCompatibility.m must not inject iOS 13+ selectors into shared UIKit classes'
+fi
+pass 'no iOS 13+ selectors are injected into shared UIKit classes'
+RAW_API=$(grep -rnE '\[UIColor (labelColor|secondaryLabelColor|tertiaryLabelColor|separatorColor|system[A-Za-z0-9]*Color|secondarySystem[A-Za-z]*Color|tertiarySystem[A-Za-z]*Color)\]|UIColor\.(labelColor|secondaryLabelColor|tertiaryLabelColor|system[A-Za-z0-9]*Color)|\.userInterfaceStyle|\.overrideUserInterfaceStyle|\[UIImage systemImageNamed|monospacedSystemFontOfSize' \
+    --include=*.x --include=*.m --include=*.mm Hooks Shared LiquidAssPrefs Tweak.x 2>/dev/null | grep -v '^Shared/LGCompatibility\.m' || true)
+if [ -n "$RAW_API" ]; then echo "$RAW_API" >&2; fail 'raw iOS 13+ UIKit API used; route through LGCompat helpers'; fi
+pass 'iOS 13+ UIKit API is only reached through LGCompat helpers'
+
 bash -n release.sh
 bash -n validate-ios12-port.sh
 pass 'shell syntax checks'

@@ -116,7 +116,7 @@ NSString *LGPrefsSurfaceSubtitle(NSString *identifier) {
 
 static UIColor *LGPrefsIndigoColor(void) {
     if (@available(iOS 13.0, *)) {
-        return UIColor.systemIndigoColor;
+        return LGCompatColor(@"systemIndigoColor");
     }
     return [UIColor colorWithRed:88.0 / 255.0
                            green:86.0 / 255.0
@@ -125,18 +125,18 @@ static UIColor *LGPrefsIndigoColor(void) {
 }
 
 UIColor *LGPrefsSurfaceTintColor(NSString *identifier) {
-    if ([identifier isEqualToString:LGPrefsSurfaceLockscreen]) return UIColor.systemRedColor;
-    if ([identifier isEqualToString:LGPrefsSurfaceAppLibrary]) return UIColor.systemGreenColor;
+    if ([identifier isEqualToString:LGPrefsSurfaceLockscreen]) return LGCompatColor(@"systemRedColor");
+    if ([identifier isEqualToString:LGPrefsSurfaceAppLibrary]) return LGCompatColor(@"systemGreenColor");
     if ([identifier isEqualToString:LGPrefsSurfaceMoreOptions]) return LGPrefsIndigoColor();
-    if ([identifier isEqualToString:LGPrefsSurfaceSettings]) return UIColor.systemGrayColor;
-    if ([identifier isEqualToString:LGPrefsSurfaceKeyboard]) return UIColor.systemOrangeColor;
+    if ([identifier isEqualToString:LGPrefsSurfaceSettings]) return LGCompatColor(@"systemGrayColor");
+    if ([identifier isEqualToString:LGPrefsSurfaceKeyboard]) return LGCompatColor(@"systemOrangeColor");
     if ([identifier isEqualToString:LGPrefsSurfaceTabBar]) return LGPrefsIndigoColor();
-    if ([identifier isEqualToString:LGPrefsSurfaceAssistiveTouch]) return UIColor.systemPurpleColor;
-    if ([identifier isEqualToString:LGPrefsSurfaceVolumeHUD]) return UIColor.systemYellowColor;
-    if ([identifier isEqualToString:LGPrefsSurfacePillHUD]) return UIColor.systemRedColor;
-    if ([identifier isEqualToString:LGPrefsSurfaceGlobalControls]) return UIColor.systemTealColor;
-    if ([identifier isEqualToString:LGPrefsSurfaceControlCenter]) return UIColor.systemTealColor;
-    return UIColor.systemBlueColor;
+    if ([identifier isEqualToString:LGPrefsSurfaceAssistiveTouch]) return LGCompatColor(@"systemPurpleColor");
+    if ([identifier isEqualToString:LGPrefsSurfaceVolumeHUD]) return LGCompatColor(@"systemYellowColor");
+    if ([identifier isEqualToString:LGPrefsSurfacePillHUD]) return LGCompatColor(@"systemRedColor");
+    if ([identifier isEqualToString:LGPrefsSurfaceGlobalControls]) return LGCompatColor(@"systemTealColor");
+    if ([identifier isEqualToString:LGPrefsSurfaceControlCenter]) return LGCompatColor(@"systemTealColor");
+    return LGCompatColor(@"systemBlueColor");
 }
 
 NSString *LGPrefsSurfaceSymbolName(NSString *identifier) {

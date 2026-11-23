@@ -235,7 +235,7 @@ static void LGAlertStyleActionLabels(UIView *root, UIView *representation) {
                 : 0.0;
             label.transform = CGAffineTransformMakeTranslation(centerOffset, 0.0);
             UIColor *textColor = LGAlertActionLabelIsDestructive(label, representation)
-                ? UIColor.systemRedColor : LGCompatLabelColorValue();
+                ? LGCompatColor(@"systemRedColor") : LGCompatLabelColorValue();
             label.alpha = 1.0;
             label.tintAdjustmentMode = UIViewTintAdjustmentModeNormal;
             label.tintColor = textColor;
@@ -460,7 +460,7 @@ static void LGAlertInvalidateActionHierarchy(UIView *representation) {
 static void LGAlertSuppressNativeActionHighlight(UIView *root);
 
 static UIColor *LGAlertActionBackgroundColor(UIView *view, BOOL highlighted) {
-    BOOL dark = view.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    BOOL dark = LGCompatInterfaceStyle(view.traitCollection) == UIUserInterfaceStyleDark;
     CGFloat white = dark ? 1.0 : 0.0;
     CGFloat alpha = highlighted ? (dark ? 0.24 : 0.18)
                                   : (dark ? 0.14 : 0.10);

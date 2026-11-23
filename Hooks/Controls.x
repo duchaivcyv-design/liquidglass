@@ -240,7 +240,7 @@ static NSArray *LGFadeRampLocations(void) {
 }
 
 static UIColor *LGSidebarBorderColor(UIView *view) {
-    BOOL dark = view.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    BOOL dark = LGCompatInterfaceStyle(view.traitCollection) == UIUserInterfaceStyleDark;
     return dark ? [UIColor colorWithWhite:kLGSidebarBorderWhiteDark
                                     alpha:kLGSidebarBorderAlpha]
                 : [UIColor.whiteColor colorWithAlphaComponent:kLGSidebarBorderAlpha];
@@ -253,7 +253,7 @@ static UIColor *LGSidebarTintBaseColor(void) {
         base = ((UIColor *(*)(Class, SEL))objc_msgSend)(UIColor.class, selector);
     }
     if (!base) {
-        if (@available(iOS 13.0, *)) base = UIColor.secondarySystemGroupedBackgroundColor;
+        if (@available(iOS 13.0, *)) base = LGCompatColor(@"secondarySystemGroupedBackgroundColor");
     }
     return base ?: UIColor.whiteColor;
 }
@@ -262,7 +262,7 @@ static UIColor *LGDetailTintBaseColor(void) {
     SEL selector = NSSelectorFromString(@"groupTableViewBackgroundColor");
     if ([UIColor respondsToSelector:selector])
         return ((UIColor *(*)(Class, SEL))objc_msgSend)(UIColor.class, selector);
-    if (@available(iOS 13.0, *)) return UIColor.systemGroupedBackgroundColor;
+    if (@available(iOS 13.0, *)) return LGCompatColor(@"systemGroupedBackgroundColor");
     return UIColor.whiteColor;
 }
 
@@ -328,7 +328,7 @@ static UIColor *LGDetailTintBaseColor(void) {
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previous {
     [super traitCollectionDidChange:previous];
-    if (!previous || previous.userInterfaceStyle != self.traitCollection.userInterfaceStyle)
+    if (!previous || LGCompatInterfaceStyle(previous) != LGCompatInterfaceStyle(self.traitCollection))
         [self lg_updateTint];
 }
 
@@ -1357,7 +1357,7 @@ static void LGInstallSettingsSlider(UISlider *owner) {
     objc_setAssociatedObject(overlay, kLGPrefsSliderSegmentCountKey,
                              @(segmentCount), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     UIColor *minimumTint = segmented ? UIColor.clearColor :
-        (owner.minimumTrackTintColor ?: owner.tintColor ?: UIColor.systemBlueColor);
+        (owner.minimumTrackTintColor ?: owner.tintColor ?: LGCompatColor(@"systemBlueColor"));
     UIColor *maximumTint = segmented ? UIColor.clearColor : owner.maximumTrackTintColor;
     if (![overlay.minimumTrackTintColor isEqual:minimumTint])
         overlay.minimumTrackTintColor = minimumTint;
@@ -1942,7 +1942,7 @@ static void LGClearSidebarCellBackground(UITableViewCell *cell) {
         if (![cell.selectedBackgroundView isKindOfClass:LGSidebarPillView.class]) {
             LGSidebarPillView *pill =
                 [[LGSidebarPillView alloc] initWithFrame:cell.bounds];
-            pill.backgroundColor = UIColor.systemGray5Color;
+            pill.backgroundColor = LGCompatColor(@"systemGray5Color");
             cell.selectedBackgroundView = pill;
         }
 
@@ -1955,7 +1955,7 @@ static void LGClearSidebarCellBackground(UITableViewCell *cell) {
     NSIndexPath *indexPath = table ? [table indexPathForCell:cell] : nil;
     BOOL active = cell.selected || cell.highlighted ||
         (indexPath && [indexPath isEqual:table.indexPathForSelectedRow]);
-    UIColor *labelColor = [UIColor.systemBlueColor colorWithAlphaComponent:0.7];
+    UIColor *labelColor = [LGCompatColor(@"systemBlueColor") colorWithAlphaComponent:0.7];
     for (UIView *sub in cell.contentView.subviews) {
         if (![NSStringFromClass(sub.class) isEqualToString:@"UITableViewLabel"]) continue;
         UILabel *label = (UILabel *)sub;

@@ -242,7 +242,7 @@ static UIImage *CreateRadialGlowImage(CGFloat diameter) {
     self.darkTintView.layer.cornerRadius = radius;
     LGCompatApplyCornerCurve(self.darkTintView.layer, curve);
     self.darkTintView.backgroundColor = LGCompatCreateDynamicColor(^UIColor *(UITraitCollection *trait) {
-        return trait.userInterfaceStyle == UIUserInterfaceStyleDark
+        return LGCompatInterfaceStyle(trait) == UIUserInterfaceStyleDark
             ? [UIColor colorWithWhite:1.0 alpha:0.06] : [UIColor colorWithWhite:1.0 alpha:0.12];
     });
     [self.backgroundContainer addSubview:self.darkTintView];

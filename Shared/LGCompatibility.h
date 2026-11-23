@@ -128,4 +128,17 @@ FOUNDATION_EXPORT Class _Nullable LGCompatHoverGestureRecognizerClass(void);
 FOUNDATION_EXPORT void LGCompatAddActionToControl(
     UIControl *control, id _Nonnull action, UIControlEvents events);
 
+/*
+ * IMPORTANT: none of the helpers below (or anywhere else in this tweak) add
+ * iOS 13+ selectors to shared UIKit classes under their original names.
+ * Doing so makes third-party SpringBoard tweaks that probe with
+ * respondsToSelector: take their iOS 13+ code path and crash on the values
+ * our fallbacks return. Every fallback is called directly instead.
+ */
+FOUNDATION_EXPORT UIColor *LGCompatColor(NSString *selectorName);
+FOUNDATION_EXPORT NSInteger LGCompatInterfaceStyle(UITraitCollection * _Nullable traits);
+FOUNDATION_EXPORT void LGCompatSetOverrideInterfaceStyle(UIView * _Nullable view, NSInteger style);
+FOUNDATION_EXPORT UIImage *_Nullable LGCompatSystemImage(NSString *name);
+FOUNDATION_EXPORT UIFont *LGCompatMonospacedFont(CGFloat size, CGFloat weight);
+
 NS_ASSUME_NONNULL_END

@@ -161,19 +161,19 @@ static UIColor *LGSliderEffectiveAccentColor(UISlider *slider) {
         slider.window.tintColor ?: UIColor.clearColor,
         slider.superview.tintColor ?: UIColor.clearColor,
         slider.tintColor ?: UIColor.clearColor,
-        UIColor.systemBlueColor
+        LGCompatColor(@"systemBlueColor")
     ];
     for (UIColor *candidate in candidates) {
         if (!candidate || candidate == UIColor.clearColor) continue;
         if (LGSliderColorLooksTooDarkForAccent(candidate)) continue;
         return candidate;
     }
-    return UIColor.systemBlueColor;
+    return LGCompatColor(@"systemBlueColor");
 }
 
 static BOOL LGSliderIsDarkMode(UITraitCollection *traitCollection) {
     if (@available(iOS 12.0, *)) {
-        return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        return LGCompatInterfaceStyle(traitCollection) == UIUserInterfaceStyleDark;
     }
     return NO;
 }

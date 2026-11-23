@@ -4,7 +4,7 @@
 
 static BOOL LGSwitchIsDarkMode(UITraitCollection *traitCollection) {
     if (@available(iOS 12.0, *)) {
-        return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        return LGCompatInterfaceStyle(traitCollection) == UIUserInterfaceStyleDark;
     }
     return NO;
 }
@@ -36,14 +36,14 @@ static UIColor *LGSwitchEffectiveAccentColor(UISwitch *toggle) {
         toggle.window.tintColor ?: UIColor.clearColor,
         toggle.superview.tintColor ?: UIColor.clearColor,
         toggle.tintColor ?: UIColor.clearColor,
-        UIColor.systemGreenColor
+        LGCompatColor(@"systemGreenColor")
     ];
     for (UIColor *candidate in candidates) {
         if (!candidate || candidate == UIColor.clearColor) continue;
         if (LGSwitchColorLooksTooDarkForAccent(candidate)) continue;
         return candidate;
     }
-    return UIColor.systemGreenColor;
+    return LGCompatColor(@"systemGreenColor");
 }
 
 static BOOL LGSwitchDiagnosticsEnabled(void) {
@@ -168,7 +168,7 @@ static void LGSettingsSwitchScheduleAutoContract(LGPrefsLiquidSwitch *self_) {
 }
 
 - (void)commonInit {
-    self.onTintColor = UIColor.systemGreenColor;
+    self.onTintColor = LGCompatColor(@"systemGreenColor");
     self.tintColor = UIColor.clearColor;
     self.thumbTintColor = UIColor.clearColor;
     self.backgroundColor = UIColor.clearColor;
