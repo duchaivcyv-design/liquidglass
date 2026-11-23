@@ -579,9 +579,9 @@ static const CGFloat kLGGlassEdgeWidth = 1.0;
     [CATransaction setDisableActions:YES];
     _specularLayer.hidden = !enabled;
     _specularLayer.frame = shapeRect;
-    UIColor *edgeColor = [UIColor.separatorColor colorWithAlphaComponent:0.16];
+    UIColor *edgeColor = [LGCompatSeparatorColorValue() colorWithAlphaComponent:0.16];
     if (@available(iOS 13.0, *))
-        edgeColor = [edgeColor resolvedColorWithTraitCollection:self.traitCollection];
+    edgeColor = [edgeColor resolvedColorWithTraitCollection:self.traitCollection];
     _edge.hidden = NO;
     _edge.frame = shapeRect;
     _edge.cornerRadius = shapeRadius;
