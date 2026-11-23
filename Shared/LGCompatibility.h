@@ -96,6 +96,7 @@ FOUNDATION_EXPORT NSString *_Nullable LGCompatReadCornerCurve(CALayer *layer);
  */
 FOUNDATION_EXPORT UIColor *LGCompatSeparatorColorValue(void);
 FOUNDATION_EXPORT UIColor *LGCompatLabelColorValue(void);
+FOUNDATION_EXPORT UIColor *LGCompatTertiaryLabelColorValue(void);
 FOUNDATION_EXPORT UIColor *_Nullable LGCompatCreateDynamicColor(
     UIColor * _Nonnull (^provider)(UITraitCollection *));
 FOUNDATION_EXPORT UIImage *_Nullable LGCompatSystemImageNamedConfigured(
@@ -116,5 +117,15 @@ FOUNDATION_EXPORT UIColor *_Nullable LGCompatResolvedColor(
  * (returns nil there and the caller skips hover setup).
  */
 FOUNDATION_EXPORT Class _Nullable LGCompatHoverGestureRecognizerClass(void);
+
+/*
+ * UIControl.addAction:forControlEvents: is iOS 14+. Also bypasses the
+ * -Wincompatible-pointer-types warning that would otherwise fire because
+ * #define UIAction remaps UIAction to LGCompatUIAction at compile time.
+ * iOS 12/13 hit the shim installed by LGCompatControlAddAction; iOS 14+
+ * dispatches native.
+ */
+FOUNDATION_EXPORT void LGCompatAddActionToControl(
+    UIControl *control, id _Nonnull action, UIControlEvents events);
 
 NS_ASSUME_NONNULL_END
