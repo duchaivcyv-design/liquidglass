@@ -139,6 +139,59 @@ NSString *LGCompatReadCornerCurve(CALayer *layer) {
     return nil;
 }
 
+/* ---- call-site helpers ----
+ *
+ * Each helper probes the runtime selector instead of touching the UIKit
+ * symbol directly. On iOS 12 the constructor above has already installed
+ * an equivalent shim via class_addMethod, so respondsToSelector: returns
+ * YES and the shim IMP runs. On iOS 13/14+ the native selector is present
+ * and its IMP runs. Fallbacks below only guard against the (impossible in
+ * practice) case where LGCompatEarlyConstructor failed to run. */
+
+UIColor *LGCompatSeparatorColorValue(void) {
+    SEL sel = NSSelectorFromString(@"separatorColor");
+    if ([UIColor respondsToSelector:sel])
+        return ((id (*)(id, SEL))objc_msgSend)(UIColor.class, sel);
+    return [[UIColor colorWithWhite:0.55 alpha:1.0] colorWithAlphaComponent:0.32];
+}
+
+UIColor *LGCompatLabelColorValue(void) {
+    SEL sel = NSSelectorFromString(@"labelColor");
+    if ([UIColor respondsToSelector:sel])
+        return ((id (*)(id, SEL))objc_msgSend)(UIColor.class, sel);
+    return [UIColor blackColor];
+}
+
+UIColor *LGCompatCreateDynamicColor(UIColor *(^provider)(UITraitCollection *)) {
+    if (!provider) return nil;
+    SEL sel = NSSelectorFromString(@"colorWithDynamicProvider:");
+    if ([UIColor respondsToSelector:sel])
+        return ((id (*)(id, SEL, id))objc_msgSend)(UIColor.class, sel, provider);
+    return provider([UITraitCollection new]);
+}
+
+UIImage *LGCompatSystemImageNamedConfigured(NSString *name, id configuration) {
+    if (![name isKindOfClass:NSString.class] || !name.length) return nil;
+    SEL sel = NSSelectorFromString(@"systemImageNamed:withConfiguration:");
+    if ([UIImage respondsToSelector:sel])
+        return ((id (*)(id, SEL, id, id))objc_msgSend)(UIImage.class, sel, name, configuration);
+    return nil;
+}
+
+void LGCompatSetButtonMenu(UIButton *button, id menu) {
+    if (!button) return;
+    SEL sel = NSSelectorFromString(@"setMenu:");
+    if ([button respondsToSelector:sel])
+        ((void (*)(id, SEL, id))objc_msgSend)(button, sel, menu);
+}
+
+void LGCompatSetButtonShowsMenu(UIButton *button, BOOL show) {
+    if (!button) return;
+    SEL sel = NSSelectorFromString(@"setShowsMenuAsPrimaryAction:");
+    if ([button respondsToSelector:sel])
+        ((void (*)(id, SEL, BOOL))objc_msgSend)(button, sel, show);
+}
+
 static NSInteger LGCompatTraitUserInterfaceStyle(id self, SEL cmd) {
     (void)self; (void)cmd; return 0; // unspecified/light on iOS 12
 }
