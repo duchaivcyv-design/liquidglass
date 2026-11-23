@@ -98,11 +98,10 @@ static UIImage *LGUCompatSystemImage(NSString *name, CGFloat pointSize, UIFontWe
     if (@available(iOS 13.0, *)) {
         UIImage *image = nil;
         if (pointSize > 0.0) {
-            UIImageSymbolConfiguration *config =
-                [UIImageSymbolConfiguration configurationWithPointSize:pointSize weight:weight];
-            image = [UIImage systemImageNamed:name withConfiguration:config];
+            id config = [UIImageSymbolConfiguration configurationWithPointSize:pointSize weight:weight];
+            image = LGCompatSystemImageNamedConfigured(name, config);
         } else {
-            image = [UIImage systemImageNamed:name];
+            image = LGCompatSystemImageNamedConfigured(name, nil);
         }
         if (image) return image;
     }
@@ -153,9 +152,11 @@ static UIImage *LGUCompatSystemImage(NSString *name, CGFloat pointSize, UIFontWe
 static void LGUAttachTapBlock(UIControl *control, void (^block)(void)) {
     if (!control || !block) return;
     if (@available(iOS 14.0, *)) {
-        [control addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull _) {
+        UIAction *action = [UIAction actionWithHandler:^(__kindof UIAction * _Nonnull _) {
+            (void)_;
             block();
-        }] forControlEvents:UIControlEventTouchUpInside];
+        }];
+        LGCompatAddActionToControl(control, action, UIControlEventTouchUpInside);
     } else {
         LGUClosureTarget *target = [LGUClosureTarget targetWithBlock:block];
         objc_setAssociatedObject(control, (__bridge const void *)(target), target, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -280,9 +281,9 @@ static void LGPerformSoftHaptic(void) {
 - (CGSize)intrinsicContentSize { return CGSizeMake(44.0, 44.0); }
 - (void)setPrimaryMenu:(id)menu {
     if (@available(iOS 14.0, *)) {
-        if ([menu isKindOfClass:[UIMenu class]]) {
-            _button.menu = (UIMenu *)menu;
-            _button.showsMenuAsPrimaryAction = YES;
+        if (menu) {
+            LGCompatSetButtonMenu(_button, menu);
+            LGCompatSetButtonShowsMenu(_button, YES);
         }
     }
 }
