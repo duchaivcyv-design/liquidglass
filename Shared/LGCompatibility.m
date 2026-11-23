@@ -78,8 +78,8 @@ static UIColor *LGCompatDynamicColor(id self, SEL cmd, id provider) {
     /* UIKit's iOS 13 dynamic colour API is reduced to a static light appearance on iOS 12. */
     UIColor *(^block)(UITraitCollection *) = (UIColor * (^)(UITraitCollection *))provider;
     if (!block) return nil;
-    UITraitCollection *traits = [UITraitCollection currentTraitCollection];
-    if (!traits) traits = [UITraitCollection new];
+    /* Use an explicit default trait collection on the iOS 12 compatibility path. */
+    UITraitCollection *traits = [UITraitCollection new];
     return block(traits);
 }
 
