@@ -486,7 +486,7 @@ static const CGFloat kLGGlassEdgeWidth = 1.0;
     [CATransaction setDisableActions:YES];
     _nativeBlurView.frame = self.bounds;
     _nativeBlurView.layer.cornerRadius = self.layer.cornerRadius;
-    _nativeBlurView.layer.cornerCurve = self.layer.cornerCurve;
+    LGCompatApplyCornerCurve(_nativeBlurView.layer, LGCompatReadCornerCurve(self.layer));
     _nativeBlurView.clipsToBounds = YES;
     if (fabs(_nativeBlurRadius - radius) > 0.001) {
         @try { [_nativeBlurView setValue:@(radius) forKey:@"lgBlurRadius"]; }
@@ -585,14 +585,14 @@ static const CGFloat kLGGlassEdgeWidth = 1.0;
     _edge.hidden = NO;
     _edge.frame = shapeRect;
     _edge.cornerRadius = shapeRadius;
-    _edge.cornerCurve = self.layer.cornerCurve;
+    LGCompatApplyCornerCurve(_edge, LGCompatReadCornerCurve(self.layer));
     _edge.borderWidth = kLGGlassEdgeWidth;
     _edge.borderColor = edgeColor.CGColor;
 
     _specularMask.frame = CGRectMake(0.0, 0.0, CGRectGetWidth(shapeRect),
                                      CGRectGetHeight(shapeRect));
     _specularMask.cornerRadius = shapeRadius;
-    _specularMask.cornerCurve = self.layer.cornerCurve;
+    LGCompatApplyCornerCurve(_specularMask, LGCompatReadCornerCurve(self.layer));
     _specularMask.borderWidth = 1.0;
     [CATransaction commit];
     [self applySpecularAngle:sLGSpecularAngle];
@@ -770,7 +770,7 @@ void LGInjectGlassIntoMaterialGroupType(UIView *mat, const void *assocKey,
         [glass updateSpecular];
         [glass applyFilters];
     }
-    glass.layer.cornerCurve   = kCACornerCurveContinuous;
+    LGCompatApplyCornerCurve(glass.layer, kCACornerCurveContinuous);
     glass.layer.masksToBounds = YES;
 
     objc_setAssociatedObject(glass, kLGOutsetKey, [NSValue valueWithUIEdgeInsets:outset],
