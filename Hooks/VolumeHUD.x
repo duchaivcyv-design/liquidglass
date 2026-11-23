@@ -5,6 +5,7 @@
 #import "../Shared/LGLiveBackdropView.h"
 #import "../Shared/LGGlassKit.h"
 #import "../Shared/LGSharedSupport.h"
+#import "../Shared/LGCompatibility.h"
 
 @interface MTMaterialView : UIView
 @end
@@ -226,9 +227,7 @@ static void LGUpdateVolumeHUDGlass(SBElasticSliderMaterialWrapperView *self) {
     glass.hidden = NO;
     glass.frame = self.bounds;
     glass.layer.cornerRadius = radius;
-    if (@available(iOS 13.0, *)) {
-        glass.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    LGCompatApplyCornerCurve(glass.layer, kCACornerCurveContinuous);
     glass.layer.masksToBounds = YES;
     [glass applyFilters];
 
@@ -236,36 +235,28 @@ static void LGUpdateVolumeHUDGlass(SBElasticSliderMaterialWrapperView *self) {
         vibrance.hidden = NO;
         vibrance.frame = self.bounds;
         vibrance.layer.cornerRadius = radius;
-        if (@available(iOS 13.0, *)) {
-            vibrance.layer.cornerCurve = kCACornerCurveContinuous;
-        }
+        LGCompatApplyCornerCurve(vibrance.layer, kCACornerCurveContinuous);
         vibrance.layer.masksToBounds = YES;
     }
 
     self.layer.cornerRadius = radius;
-    if (@available(iOS 13.0, *)) {
-        self.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    LGCompatApplyCornerCurve(self.layer, kCACornerCurveContinuous);
 
     if (sliderWrapper) {
         sliderWrapper.layer.cornerRadius = radius;
-        if (@available(iOS 13.0, *)) {
-            sliderWrapper.layer.cornerCurve = kCACornerCurveContinuous;
-        }
+        LGCompatApplyCornerCurve(sliderWrapper.layer, kCACornerCurveContinuous);
         sliderWrapper.layer.masksToBounds = YES;
     }
 
     if (sliderView) {
         sliderView.layer.cornerRadius = radius;
-        if (@available(iOS 13.0, *)) {
-            sliderView.layer.cornerCurve = kCACornerCurveContinuous;
-        }
+        LGCompatApplyCornerCurve(sliderView.layer, kCACornerCurveContinuous);
         sliderView.layer.masksToBounds = YES;
         if (LGVolumeHUDNeedsLegacyMaterialWorkaround()) {
             for (UIView *subview in sliderView.subviews) {
                 if (![subview isKindOfClass:NSClassFromString(@"MTMaterialView")]) continue;
                 subview.layer.cornerRadius = radius;
-                subview.layer.cornerCurve = kCACornerCurveContinuous;
+                LGCompatApplyCornerCurve(subview.layer, kCACornerCurveContinuous);
                 subview.layer.masksToBounds = YES;
             }
         }
@@ -336,7 +327,7 @@ static void LGUpdateLegacyVolumeHUDGlass(UIView *hud) {
     glass.frame = hud.bounds;
     glass.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     glass.layer.cornerRadius = radius;
-    glass.layer.cornerCurve = kCACornerCurveContinuous;
+    LGCompatApplyCornerCurve(glass.layer, kCACornerCurveContinuous);
     glass.layer.masksToBounds = YES;
     [glass applyFilters];
 }
@@ -388,16 +379,12 @@ static void LGUpdateLegacyVolumeHUDGlass(UIView *hud) {
         LGLiveBackdropView *glass = objc_getAssociatedObject(self, kLGVolumeHUDGlassKey);
         if (glass) {
             glass.layer.cornerRadius = pillRadius;
-            if (@available(iOS 13.0, *)) {
-                glass.layer.cornerCurve = kCACornerCurveContinuous;
-            }
+            LGCompatApplyCornerCurve(glass.layer, kCACornerCurveContinuous);
         }
         LGVolumeHUDVibranceView *vibrance = objc_getAssociatedObject(self, kLGVolumeHUDVibranceKey);
         if (vibrance) {
             vibrance.layer.cornerRadius = pillRadius;
-            if (@available(iOS 13.0, *)) {
-                vibrance.layer.cornerCurve = kCACornerCurveContinuous;
-            }
+            LGCompatApplyCornerCurve(vibrance.layer, kCACornerCurveContinuous);
         }
     } else {
         %orig;
