@@ -96,6 +96,30 @@ if bad:
 PYCHK2
 pass 'every %init outside the intentional iOS 12 features is version-gated'
 
+# Respring must commit staged prefs before asking SpringBoard to respring; otherwise nothing changes.
+python3 - <<'PYCHK3' || fail 'respring path does not commit staged preferences first'
+import re, sys
+bad = []
+for f in ['LiquidAssPrefs/LGPrefsUIHelpers.m', 'LiquidAssPrefs/LGPRootListController.m']:
+    lines = open(f, encoding='utf-8').read().split('\n')
+    for i, l in enumerate(lines):
+        if 'notify_post(LGPrefsRespringNotificationCString)' in l:
+            window = '\n'.join(lines[max(0, i-4):i])
+            if 'LGForceSynchronizePreferences()' not in window:
+                bad.append(f"{f}:{i+1}")
+if bad:
+    print('\n'.join(bad)); sys.exit(1)
+PYCHK3
+pass 'every respring notify commits staged preferences first'
+
+# The deliberate respring must not be counted as a backboardd crash loop.
+grep -q 'LGResetBackboardRapidStartCounter();' Tweak.x || fail 'LG_requestRespring must reset the backboardd rapid-start counter'
+pass 'deliberate respring resets the backboardd rapid-start counter'
+
+# Master switch default must match what the tweak actually does when the key is unset.
+grep -q 'Global.Enabled", YES)' Shared/LGSharedSupport.m || fail 'Global.Enabled default must be YES in LG_globalEnabled'
+pass 'master switch default matches the tweak (unset = on)'
+
 bash -n release.sh
 bash -n validate-ios12-port.sh
 pass 'shell syntax checks'

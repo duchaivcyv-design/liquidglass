@@ -119,3 +119,16 @@ that `HSWidgets` / `HSModernWeatherWidget` use. Changes:
 Not verified: no Theos build, no device run. Logos syntax was checked only by balance of `%group`/`%hook`/`%end` and
 braces. The home-screen SpringBoard crash is expected to stop only if it came from the global UIKit hooks; a fresh
 `.ips` from the new build is needed to confirm that.
+
+## Port7 — respring commits settings, master switch default
+
+1. The respring confirmation (`LGPrefsUIHelpers.m`) and "Exit Safe Mode" (`LGPRootListController.m`) posted the respring
+   notification without first calling `LGForceSynchronizePreferences()`. Staged switch values stayed in memory, the
+   on-disk plist never changed, and the respring reloaded the old values. Both now commit first.
+2. `LG_requestRespring` now resets the backboardd rapid-start counter (`LGResetBackboardRapidStartCounter`), so a few
+   deliberate responds are not counted as a crash loop. The disabled flag is never touched. On iOS 12 the backboardd
+   guard does not run at all (the constructor returns early), so this matters for iOS 14+ builds.
+3. `Global.Enabled` defaults to on everywhere (UI, `LG_globalEnabled`). Before, the switch showed off while the tweak
+   already drew glass when the key was unset.
+
+Not verified on a device.

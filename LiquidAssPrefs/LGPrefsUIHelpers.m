@@ -718,6 +718,9 @@ void LGPresentRespringConfirmation(UIViewController *controller) {
         actionWithTitle:LGLocalized(@"prefs.button.respring")
                   style:UIAlertActionStyleDefault
                 handler:^(__unused UIAlertAction *action) {
+        /* Commit staged values first. Without this the on-disk plist never receives the
+           change, so the respring reloads the old settings and nothing appears to change. */
+        LGForceSynchronizePreferences();
         LGSetNeedsRespring(NO);
         notify_post(LGPrefsRespringNotificationCString);
     }]];

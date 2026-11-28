@@ -390,10 +390,8 @@ static void restorePasscodeForDisable(void) {
 
 
 %ctor {
-    lgObservePreferenceReload(^{ restorePasscodeForDisable(); });
     // iOS 12 keeps only the glass carriers above; everything else needs iOS 14+ classes/layouts.
     if (NSProcessInfo.processInfo.operatingSystemVersion.majorVersion < 14) return;
-    %init;
     %init(LGIOS14_Passcode_1_SBPasscodeNumberPadButton);
     %init(LGIOS14_Passcode_2_CSPasscodeBackgroundView);
 }

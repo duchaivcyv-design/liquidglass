@@ -23,6 +23,7 @@ BOOL LGIsExcludedSystemProcess(void);
 BOOL LGIsAtLeastiOS16(void);
 BOOL LGBackboardSafeModeActive(void);
 void LGClearBackboardSafeMode(void);
+void LGResetBackboardRapidStartCounter(void);
 
 NSString *LGRWBDefaultWidgetBundleIDsText(void);
 

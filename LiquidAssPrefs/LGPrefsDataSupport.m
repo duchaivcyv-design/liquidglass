@@ -926,7 +926,7 @@ NSArray<NSDictionary *> *LGHomescreenItems(void) {
 
 NSArray<NSDictionary *> *LGAllSurfaceItems(void) {
     NSMutableArray<NSDictionary *> *all = [NSMutableArray array];
-    [all addObject:LGSwitchSetting(@"Global.Enabled", LGLocalized(@"prefs.control.enabled"), LGLocalized(@"prefs.subtitle.global_enabled"), NO)];
+    [all addObject:LGSwitchSetting(@"Global.Enabled", LGLocalized(@"prefs.control.enabled"), LGLocalized(@"prefs.subtitle.global_enabled"), YES)];
     [all addObject:LGGlassQualitySetting(@"Global.Quality", 1.0, 0.1, 1.0, 2)];
     [all addObjectsFromArray:LGHomescreenItems()];
     [all addObjectsFromArray:LGLockscreenItems()];

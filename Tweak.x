@@ -214,6 +214,7 @@ static void LG_safeModeAlertLog(NSString *format, ...) {
 }
 
 static void LG_requestRespring(void) {
+    LGResetBackboardRapidStartCounter();
     static const char * const processNames[] = {
         "backboardd",
         NULL,

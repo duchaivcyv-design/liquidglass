@@ -35,6 +35,25 @@ BOOL LGBackboardSafeModeActive(void) {
     return state.bootTime == (int64_t)bootTime.tv_sec;
 }
 
+/*
+ * Called before a deliberate respring. The respring restarts backboardd on purpose,
+ * and the backboardd guard counts restarts in a 60 s window (3 = safe mode). Clearing the
+ * counter here stops a few respring taps from being mistaken for a crash loop.
+ * The disabled flag is never touched.
+ */
+void LGResetBackboardRapidStartCounter(void) {
+    NSString *path = [NSString stringWithUTF8String:kLGBackboardSafeModeStatePath];
+    NSData *data = [NSData dataWithContentsOfFile:path];
+    if (data.length != sizeof(LGBackboardSafeModeState)) return;
+    LGBackboardSafeModeState state = {};
+    [data getBytes:&state length:sizeof(state)];
+    if (state.magic != 0x4c47534d || state.version != 1 || state.disabled) return;
+    state.rapidStarts = 0;
+    state.lastStartMilliseconds = 0;
+    NSData *out = [NSData dataWithBytes:&state length:sizeof(state)];
+    [out writeToFile:path atomically:NO];
+}
+
 void LGClearBackboardSafeMode(void) {
     unlink(kLGBackboardSafeModeStatePath);
     unlink(kLGBackboardSafeModePendingPath);
@@ -367,7 +386,7 @@ NSString *LG_prefString(NSString *key, NSString *fallback) {
 }
 
 BOOL LG_globalEnabled(void) {
-    return LG_prefBool(@"Global.Enabled", NO);
+    return LG_prefBool(@"Global.Enabled", YES);
 }
 
 BOOL LGDebugLoggingEnabled(void) {

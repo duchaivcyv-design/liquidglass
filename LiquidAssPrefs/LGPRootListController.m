@@ -167,7 +167,7 @@ static UIImage *LGRCompatChevronRightImage(void) {
 }
 
 - (BOOL)isGlobalEnabled {
-    return [LGReadPreference(@"Global.Enabled", @NO) boolValue];
+    return [LGReadPreference(@"Global.Enabled", @YES) boolValue];
 }
 
 - (void)handleSliderValueLabelTapped:(UITapGestureRecognizer *)gesture {
@@ -607,6 +607,7 @@ static UIImage *LGRCompatChevronRightImage(void) {
         [self updateSafeModeAvailability];
         return;
     }
+    LGForceSynchronizePreferences();
     LGClearBackboardSafeMode();
     notify_post(LGPrefsRespringNotificationCString);
 }
