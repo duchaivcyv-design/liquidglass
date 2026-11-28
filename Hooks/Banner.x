@@ -217,9 +217,9 @@ static void LGUpdatePlatterGlass(UIView *material) {
 }
 %end
 
-
 %ctor {
     // iOS 12 keeps only the glass carriers above; everything else needs iOS 14+ classes/layouts.
     if (NSProcessInfo.processInfo.operatingSystemVersion.majorVersion < 14) return;
+    %init;
     %init(LGIOS14_Banner_1_UILabel);
 }
