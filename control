@@ -1,0 +1,12 @@
+Package: dylv.liquidass
+Name: Liquid (Gl)ass (ios12)
+Version: 0.1.1-2b+ios12.0port3
+Architecture: iphoneos-arm
+Description: Liquid Glass system UI effects with iOS 12 compatibility renderer
+Maintainer: TaoJB, JB, iphone, dylv
+Author: TaoJB, JB, iphone, dylv
+Section: Tweaks
+Depends: mobilesubstrate (>= 0.9.5000), firmware (>= 12.0), firmware (<< 26.0), preferenceloader, com.opa334.altlist
+Icon: https://winaviation.github.io/repo/depictions/dylv.liquidass/icon.png
+Replaces: dylv.blurless
+Conflicts: dylv.blurless
